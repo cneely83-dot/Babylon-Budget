@@ -1,0 +1,322 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Install Babylon Budget dependencies",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"install"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Check Windows Package Manager",
+			"type": "shell",
+			"command": "winget",
+			"args": [
+				"--version"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Install Node.js LTS",
+			"type": "shell",
+			"command": "winget",
+			"args": [
+				"install",
+				"--id",
+				"OpenJS.NodeJS.LTS",
+				"--exact",
+				"--accept-package-agreements",
+				"--accept-source-agreements"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Install Babylon Budget dependencies",
+			"type": "shell",
+			"command": "C:\\Program Files\\nodejs\\npm.cmd",
+			"args": [
+				"install"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Install Babylon Budget dependencies (Node LTS)",
+			"type": "shell",
+			"command": "C:\\Program Files\\nodejs\\npm.cmd",
+			"args": [
+				"install"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Build Babylon Budget (Node LTS)",
+			"type": "shell",
+			"command": "C:\\Program Files\\nodejs\\npm.cmd",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Babylon Budget with Node PATH",
+			"type": "shell",
+			"command": "cmd.exe",
+			"args": [
+				"/d",
+				"/c",
+				"set \"PATH=C:\\Program Files\\nodejs;%PATH%\" & \"C:\\Program Files\\nodejs\\npm.cmd\" run build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Typecheck Babylon Budget",
+			"type": "shell",
+			"command": "C:\\Program Files\\nodejs\\node.exe",
+			"args": [
+				"node_modules\\typescript\\bin\\tsc",
+				"-b"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Typecheck Babylon Budget after Vite types",
+			"type": "shell",
+			"command": "C:\\Program Files\\nodejs\\node.exe",
+			"args": [
+				"node_modules\\typescript\\bin\\tsc",
+				"-b"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Bundle Babylon Budget",
+			"type": "shell",
+			"command": "C:\\Program Files\\nodejs\\node.exe",
+			"args": [
+				"node_modules\\vite\\bin\\vite.js",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Serve Babylon Budget",
+			"type": "shell",
+			"command": "C:\\Program Files\\nodejs\\node.exe",
+			"args": [
+				"node_modules\\vite\\bin\\vite.js",
+				"--host",
+				"127.0.0.1",
+				"--port",
+				"5173",
+				"--strictPort"
+			],
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Typecheck bills update",
+			"type": "shell",
+			"command": "C:\\Program Files\\nodejs\\node.exe",
+			"args": [
+				"node_modules\\typescript\\bin\\tsc",
+				"-b"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Bundle bills update",
+			"type": "shell",
+			"command": "C:\\Program Files\\nodejs\\node.exe",
+			"args": [
+				"node_modules\\vite\\bin\\vite.js",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Typecheck income setup flow",
+			"type": "shell",
+			"command": "C:\\Program Files\\nodejs\\node.exe",
+			"args": [
+				"node_modules\\typescript\\bin\\tsc",
+				"-b"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Bundle multi-step budget setup",
+			"type": "shell",
+			"command": "C:\\Program Files\\nodejs\\node.exe",
+			"args": [
+				"node_modules\\vite\\bin\\vite.js",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Typecheck income edit update",
+			"type": "shell",
+			"command": "C:\\Program Files\\nodejs\\node.exe",
+			"args": [
+				"node_modules\\typescript\\bin\\tsc",
+				"-b"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Bundle income amount and edit update",
+			"type": "shell",
+			"command": "C:\\Program Files\\nodejs\\node.exe",
+			"args": [
+				"node_modules\\vite\\bin\\vite.js",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Typecheck reordered bills",
+			"type": "shell",
+			"command": "C:\\Program Files\\nodejs\\node.exe",
+			"args": [
+				"node_modules\\typescript\\bin\\tsc",
+				"-b"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Bundle reordered editable bills",
+			"type": "shell",
+			"command": "C:\\Program Files\\nodejs\\node.exe",
+			"args": [
+				"node_modules\\vite\\bin\\vite.js",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Publish Babylon Budget to GitHub",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"init",
+				"-b",
+				"main"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Check Git for Windows package",
+			"type": "shell",
+			"command": "winget",
+			"args": [
+				"show",
+				"--id",
+				"Git.Git",
+				"--exact",
+				"--accept-source-agreements"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Install Git for Windows",
+			"type": "shell",
+			"command": "winget",
+			"args": [
+				"install",
+				"--id",
+				"Git.Git",
+				"--exact",
+				"--accept-package-agreements",
+				"--accept-source-agreements"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Initialize Babylon Budget Git repository",
+			"type": "shell",
+			"command": "C:\\Program Files\\Git\\cmd\\git.exe",
+			"args": [
+				"init",
+				"-b",
+				"main"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Commit Babylon Budget application",
+			"type": "shell",
+			"command": "C:\\Program Files\\Git\\cmd\\git.exe",
+			"args": [
+				"add",
+				"."
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}
