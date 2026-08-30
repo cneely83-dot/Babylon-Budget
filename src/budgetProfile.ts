@@ -2,6 +2,7 @@ export type PayFrequency = 'weekly' | 'biweekly' | 'semimonthly' | 'monthly'
 export type ExpenseFrequency = 'weekly' | 'biweekly' | 'semimonthly' | 'monthly'
 export type PaymentMethod = 'autopay' | 'manual'
 export type IncomeType = 'hourly' | 'salary'
+export type SpendingCategoryType = 'expense' | 'debt'
 
 export interface IncomeSource {
   id: string
@@ -19,6 +20,7 @@ export interface Bill {
   dueDay: number
   paymentMethod: PaymentMethod
   paymentUrl: string
+  categoryType: SpendingCategoryType
 }
 
 export interface ExpenseCategory {
@@ -26,6 +28,7 @@ export interface ExpenseCategory {
   name: string
   budgetedAmount: number
   frequency: ExpenseFrequency
+  categoryType: SpendingCategoryType
 }
 
 export interface BillPaymentRecord {
@@ -45,6 +48,15 @@ export interface BillPaymentHistoryEntry {
   confirmationCode?: string
 }
 
+export interface IncomePaymentHistoryEntry {
+  id: string
+  incomeSourceId: string
+  incomeSourceLabel: string
+  amount: number
+  paidAt: string
+  note?: string
+}
+
 export interface ExpenseTransaction {
   id: string
   date: string
@@ -59,15 +71,16 @@ export interface BudgetProfile {
   incomeSources: IncomeSource[]
   billPayments?: Record<string, BillPaymentRecord> // billId -> record
   billPaymentHistory?: BillPaymentHistoryEntry[]
+  incomePaymentHistory?: IncomePaymentHistoryEntry[]
   transactions?: ExpenseTransaction[]
 }
 
 export const starterCategories: ExpenseCategory[] = [
-  { id: 'cat-1', name: 'Groceries', budgetedAmount: 600, frequency: 'monthly' },
-  { id: 'cat-2', name: 'Fuel & Transportation', budgetedAmount: 200, frequency: 'monthly' },
-  { id: 'cat-3', name: 'Eating Out & Coffee', budgetedAmount: 250, frequency: 'monthly' },
-  { id: 'cat-4', name: 'Clothing & Shopping', budgetedAmount: 100, frequency: 'monthly' },
-  { id: 'cat-5', name: 'Housing & Utilities', budgetedAmount: 150, frequency: 'monthly' },
+  { id: 'cat-1', name: 'Groceries', budgetedAmount: 600, frequency: 'monthly', categoryType: 'expense' },
+  { id: 'cat-2', name: 'Fuel & Transportation', budgetedAmount: 200, frequency: 'monthly', categoryType: 'expense' },
+  { id: 'cat-3', name: 'Eating Out & Coffee', budgetedAmount: 250, frequency: 'monthly', categoryType: 'expense' },
+  { id: 'cat-4', name: 'Clothing & Shopping', budgetedAmount: 100, frequency: 'monthly', categoryType: 'expense' },
+  { id: 'cat-5', name: 'Housing & Utilities', budgetedAmount: 150, frequency: 'monthly', categoryType: 'expense' },
 ]
 
 export function normalizeCategories(rawCategories: unknown): ExpenseCategory[] {
@@ -79,6 +92,7 @@ export function normalizeCategories(rawCategories: unknown): ExpenseCategory[] {
         name: item,
         budgetedAmount: 0,
         frequency: 'monthly',
+        categoryType: 'expense',
       }
     }
     if (typeof item === 'object' && item !== null && 'name' in item) {
@@ -88,6 +102,7 @@ export function normalizeCategories(rawCategories: unknown): ExpenseCategory[] {
         name: (obj.name as string) || 'Untitled Category',
         budgetedAmount: Number(obj.budgetedAmount) || 0,
         frequency: (obj.frequency as ExpenseFrequency) || 'monthly',
+        categoryType: (obj.categoryType as SpendingCategoryType) || 'expense',
       }
     }
     return {
@@ -95,6 +110,23 @@ export function normalizeCategories(rawCategories: unknown): ExpenseCategory[] {
       name: String(item),
       budgetedAmount: 0,
       frequency: 'monthly',
+      categoryType: 'expense',
+    }
+  })
+}
+
+export function normalizeBills(rawBills: unknown): Bill[] {
+  if (!Array.isArray(rawBills)) return []
+  return rawBills.map((item, idx) => {
+    const obj = typeof item === 'object' && item !== null ? item as Record<string, unknown> : {}
+    return {
+      id: (obj.id as string) || `bill-${idx}-${Date.now()}`,
+      name: (obj.name as string) || 'Untitled Bill',
+      anticipatedAmount: Number(obj.anticipatedAmount) || 0,
+      dueDay: Number(obj.dueDay) || 1,
+      paymentMethod: (obj.paymentMethod as PaymentMethod) || 'manual',
+      paymentUrl: (obj.paymentUrl as string) || '',
+      categoryType: (obj.categoryType as SpendingCategoryType) || 'expense',
     }
   })
 }
@@ -281,6 +313,7 @@ export async function loadBudgetProfileAsync(user?: UserAccount | null): Promise
         if (data.profile) {
           const normalizedProfile: BudgetProfile = {
             ...data.profile,
+            bills: normalizeBills(data.profile.bills),
             categories: normalizeCategories(data.profile.categories),
           }
           saveBudgetProfileLocal(normalizedProfile, user.id)
@@ -322,6 +355,7 @@ export function loadBudgetProfile(userId?: string): BudgetProfile | null {
     if (user?.profile) {
       return {
         ...user.profile,
+        bills: normalizeBills(user.profile.bills),
         categories: normalizeCategories(user.profile.categories),
       }
     }
@@ -334,6 +368,7 @@ export function loadBudgetProfile(userId?: string): BudgetProfile | null {
     const parsed = JSON.parse(savedProfile) as BudgetProfile
     return {
       ...parsed,
+      bills: normalizeBills(parsed.bills),
       categories: normalizeCategories(parsed.categories),
     }
   } catch {

@@ -16,13 +16,13 @@ import {
   Landmark,
   Lock,
   Mail,
+  Moon,
   Pencil,
   PieChart,
   Plus,
   Receipt,
   Scale,
   ShieldCheck,
-  Sparkles,
   Tag,
   Trash2,
   TrendingUp,
@@ -32,6 +32,7 @@ import {
   Save,
   Check,
   Filter,
+  Sun,
 } from 'lucide-react'
 import {
   type Bill,
@@ -41,10 +42,12 @@ import {
   type ExpenseCategory,
   type ExpenseFrequency,
   type ExpenseTransaction,
+  type IncomePaymentHistoryEntry,
   type IncomeSource,
   type IncomeType,
   type PayFrequency,
   type PaymentMethod,
+  type SpendingCategoryType,
   type UserAccount,
   getCurrentUser,
   loadBudgetProfile,
@@ -74,13 +77,19 @@ const expenseFrequencies: { value: ExpenseFrequency; label: string; detail: stri
 const dueDays = Array.from({ length: 31 }, (_, index) => index + 1)
 const setupSteps = ['Income', 'Bills', 'Expenses']
 type HistoryScope = 'pay-periods' | 'months' | 'years'
+const ONE_OFF_INCOME_SOURCE_ID = 'one-off-income'
+const THEME_STORAGE_KEY = 'babylon-budget.theme'
 
 interface HistoricalBucket {
   key: string
   label: string
   sortValue: number
   billTotal: number
+  incomeTotal: number
   expenseTotal: number
+  debtAllocationTotal: number
+  expenseAllocationTotal: number
+  incomeItems: { id: string; name: string; amount: number }[]
   billItems: { id: string; name: string; amount: number }[]
   categoryItems: { id: string; name: string; amount: number }[]
 }
@@ -163,6 +172,13 @@ const babylonCures = [
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => getCurrentUser())
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      return localStorage.getItem(THEME_STORAGE_KEY) === 'dark' ? 'dark' : 'light'
+    } catch {
+      return 'light'
+    }
+  })
   const [view, setView] = useState<'landing' | 'setup' | 'home'>('landing')
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup')
@@ -181,6 +197,7 @@ export default function App() {
   const [incomeSources, setIncomeSources] = useState<IncomeSource[]>(initialProfile?.incomeSources ?? [])
   const [billPayments, setBillPayments] = useState<Record<string, BillPaymentRecord>>(initialProfile?.billPayments ?? {})
   const [billPaymentHistory, setBillPaymentHistory] = useState<BillPaymentHistoryEntry[]>(initialProfile?.billPaymentHistory ?? [])
+  const [incomePaymentHistory, setIncomePaymentHistory] = useState<IncomePaymentHistoryEntry[]>(initialProfile?.incomePaymentHistory ?? [])
   const [transactions, setTransactions] = useState<ExpenseTransaction[]>(
     initialProfile?.transactions && initialProfile.transactions.length > 0
       ? initialProfile.transactions
@@ -202,20 +219,26 @@ export default function App() {
   const [billDueDay, setBillDueDay] = useState(1)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('manual')
   const [paymentUrl, setPaymentUrl] = useState('')
+  const [billCategoryType, setBillCategoryType] = useState<SpendingCategoryType>('expense')
   const [editingBillId, setEditingBillId] = useState<string | null>(null)
 
   // Expense Category Form State
   const [categoryName, setCategoryName] = useState('')
   const [categoryBudgetedAmount, setCategoryBudgetedAmount] = useState('')
   const [categoryFrequency, setCategoryFrequency] = useState<ExpenseFrequency>('monthly')
+  const [categoryType, setCategoryType] = useState<SpendingCategoryType>('expense')
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
 
   const [isSaved, setIsSaved] = useState(false)
 
   // Home view state
   const [activeTab, setActiveTab] = useState<'bills' | 'expenses' | 'income'>('bills')
-  const [activeFeatureModal, setActiveFeatureModal] = useState<'pay-bills' | 'code-expenses' | 'view-budgets' | 'history' | null>(null)
+  const [activeFeatureModal, setActiveFeatureModal] = useState<'post-income' | 'pay-bills' | 'code-expenses' | 'view-budgets' | 'history' | null>(null)
   const [historyScope, setHistoryScope] = useState<HistoryScope>('pay-periods')
+  const [actualIncomeSourceId, setActualIncomeSourceId] = useState('')
+  const [actualPayDate, setActualPayDate] = useState(new Date().toISOString().split('T')[0])
+  const [actualPayAmount, setActualPayAmount] = useState('')
+  const [actualPayNote, setActualPayNote] = useState('')
   
   // Inline editing in Home master table
   const [inlineEditingBillId, setInlineEditingBillId] = useState<string | null>(null)
@@ -238,6 +261,7 @@ export default function App() {
     setIncomeSources(profile?.incomeSources ?? [])
     setBillPayments(profile?.billPayments ?? {})
     setBillPaymentHistory(profile?.billPaymentHistory ?? [])
+    setIncomePaymentHistory(profile?.incomePaymentHistory ?? [])
     setTransactions(
       profile?.transactions && profile.transactions.length > 0
         ? profile.transactions
@@ -285,6 +309,18 @@ export default function App() {
     setView('landing')
   }
 
+  function toggleTheme() {
+    setTheme((currentTheme) => {
+      const nextTheme = currentTheme === 'dark' ? 'light' : 'dark'
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
+      } catch {
+        // Keep the selected theme for this session if storage is unavailable.
+      }
+      return nextTheme
+    })
+  }
+
   // Expense Category Handlers
   function addCategory(event: FormEvent) {
     event.preventDefault()
@@ -297,6 +333,7 @@ export default function App() {
       name,
       budgetedAmount: amount,
       frequency: categoryFrequency,
+      categoryType,
     }
 
     const updated = editingCategoryId
@@ -306,7 +343,7 @@ export default function App() {
     setCategories(updated)
     resetCategoryForm()
     if (view === 'home') {
-      saveBudgetProfileAsync({ categories: updated, bills, incomeSources, billPayments, billPaymentHistory, transactions }, currentUser)
+      saveBudgetProfileAsync({ categories: updated, bills, incomeSources, billPayments, billPaymentHistory, incomePaymentHistory, transactions }, currentUser)
     }
   }
 
@@ -315,12 +352,14 @@ export default function App() {
     setCategoryName(category.name)
     setCategoryBudgetedAmount(String(category.budgetedAmount ?? ''))
     setCategoryFrequency(category.frequency)
+    setCategoryType(category.categoryType ?? 'expense')
   }
 
   function resetCategoryForm() {
     setCategoryName('')
     setCategoryBudgetedAmount('')
     setCategoryFrequency('monthly')
+    setCategoryType('expense')
     setEditingCategoryId(null)
   }
 
@@ -329,7 +368,7 @@ export default function App() {
     setCategories(updated)
     if (editingCategoryId === categoryId) resetCategoryForm()
     if (view === 'home') {
-      saveBudgetProfileAsync({ categories: updated, bills, incomeSources, billPayments, billPaymentHistory, transactions }, currentUser)
+      saveBudgetProfileAsync({ categories: updated, bills, incomeSources, billPayments, billPaymentHistory, incomePaymentHistory, transactions }, currentUser)
     }
   }
 
@@ -354,7 +393,7 @@ export default function App() {
     setIncomeSources(updated)
     resetIncomeForm()
     if (view === 'home') {
-      saveBudgetProfileAsync({ categories, bills, incomeSources: updated, billPayments, billPaymentHistory, transactions }, currentUser)
+      saveBudgetProfileAsync({ categories, bills, incomeSources: updated, billPayments, billPaymentHistory, incomePaymentHistory, transactions }, currentUser)
     }
   }
 
@@ -363,7 +402,7 @@ export default function App() {
     setIncomeSources(updated)
     if (editingIncomeId === incomeId) resetIncomeForm()
     if (view === 'home') {
-      saveBudgetProfileAsync({ categories, bills, incomeSources: updated, billPayments, billPaymentHistory, transactions }, currentUser)
+      saveBudgetProfileAsync({ categories, bills, incomeSources: updated, billPayments, billPaymentHistory, incomePaymentHistory, transactions }, currentUser)
     }
   }
 
@@ -401,6 +440,7 @@ export default function App() {
       dueDay: billDueDay,
       paymentMethod,
       paymentUrl: url,
+      categoryType: billCategoryType,
     }
     const updated = editingBillId
       ? bills.map((currentBill) => (currentBill.id === editingBillId ? bill : currentBill))
@@ -408,7 +448,7 @@ export default function App() {
     setBills(updated)
     resetBillForm()
     if (view === 'home') {
-      saveBudgetProfileAsync({ categories, bills: updated, incomeSources, billPayments, billPaymentHistory, transactions }, currentUser)
+      saveBudgetProfileAsync({ categories, bills: updated, incomeSources, billPayments, billPaymentHistory, incomePaymentHistory, transactions }, currentUser)
     }
   }
 
@@ -419,6 +459,7 @@ export default function App() {
     setBillDueDay(bill.dueDay)
     setPaymentMethod(bill.paymentMethod)
     setPaymentUrl(bill.paymentUrl)
+    setBillCategoryType(bill.categoryType ?? 'expense')
   }
 
   function resetBillForm() {
@@ -427,6 +468,7 @@ export default function App() {
     setBillDueDay(1)
     setPaymentMethod('manual')
     setPaymentUrl('')
+    setBillCategoryType('expense')
     setEditingBillId(null)
   }
 
@@ -435,12 +477,12 @@ export default function App() {
     setBills(updated)
     if (editingBillId === billId) resetBillForm()
     if (view === 'home') {
-      saveBudgetProfileAsync({ categories, bills: updated, incomeSources, billPayments, billPaymentHistory, transactions }, currentUser)
+      saveBudgetProfileAsync({ categories, bills: updated, incomeSources, billPayments, billPaymentHistory, incomePaymentHistory, transactions }, currentUser)
     }
   }
 
   async function continueToBudget() {
-    const profile: BudgetProfile = { categories, bills, incomeSources, billPayments, billPaymentHistory, transactions }
+    const profile: BudgetProfile = { categories, bills, incomeSources, billPayments, billPaymentHistory, incomePaymentHistory, transactions }
     await saveBudgetProfileAsync(profile, currentUser)
     setIsSaved(true)
     setView('home')
@@ -462,24 +504,38 @@ export default function App() {
       confirmationCode: '',
       paid: false,
     }
-    const updatedRecord: BillPaymentRecord = {
+    let updatedRecord: BillPaymentRecord = {
       ...existing,
       ...updates,
     }
     const currentBill = bills.find((bill) => bill.id === billId)
     let updatedHistory = billPaymentHistory
-    if (updates.paid === true && !existing.paid && currentBill) {
-      const paidAt = new Date().toISOString().split('T')[0]
+    if (updatedRecord.paid && !updatedRecord.paidAt) {
+      updatedRecord = { ...updatedRecord, paidAt: new Date().toISOString().split('T')[0] }
+    }
+    if (!updatedRecord.paid && existing.paidAt) {
+      updatedRecord = { ...updatedRecord, paidAt: undefined }
+    }
+    if (!updatedRecord.paid && currentBill) {
+      updatedHistory = billPaymentHistory.filter((entry) => entry.billId !== billId)
+      setBillPaymentHistory(updatedHistory)
+    }
+    if (updatedRecord.paid && currentBill) {
       const actualAmount = Number(updatedRecord.actualAmount)
+      const hasActualAmount = Number.isFinite(actualAmount) && actualAmount > 0
+      const paidAt = updatedRecord.paidAt ?? new Date().toISOString().split('T')[0]
+      updatedHistory = billPaymentHistory.filter((entry) => !(entry.billId === billId && entry.paidAt === paidAt))
+      if (hasActualAmount) {
       const historyEntry: BillPaymentHistoryEntry = {
         id: crypto.randomUUID(),
         billId,
         billName: currentBill.name,
-        amount: Number.isFinite(actualAmount) && actualAmount > 0 ? actualAmount : currentBill.anticipatedAmount,
+        amount: actualAmount,
         paidAt,
         confirmationCode: updatedRecord.confirmationCode || '',
       }
-      updatedHistory = [historyEntry, ...billPaymentHistory]
+        updatedHistory = [historyEntry, ...updatedHistory]
+      }
       setBillPaymentHistory(updatedHistory)
     }
     const updatedPayments = {
@@ -488,7 +544,36 @@ export default function App() {
     }
     setBillPayments(updatedPayments)
     saveBudgetProfileAsync(
-      { categories, bills, incomeSources, billPayments: updatedPayments, billPaymentHistory: updatedHistory, transactions },
+      { categories, bills, incomeSources, billPayments: updatedPayments, billPaymentHistory: updatedHistory, incomePaymentHistory, transactions },
+      currentUser
+    )
+  }
+
+  function postActualIncome(event: FormEvent) {
+    event.preventDefault()
+    const isOneOffIncome = actualIncomeSourceId === ONE_OFF_INCOME_SOURCE_ID || incomeSources.length === 0
+    const source = isOneOffIncome ? null : incomeSources.find((item) => item.id === actualIncomeSourceId) ?? incomeSources[0]
+    const amount = Number(actualPayAmount)
+    if ((!source && !isOneOffIncome) || !actualPayDate || !Number.isFinite(amount) || amount <= 0) return
+
+    const historyEntry: IncomePaymentHistoryEntry = {
+      id: crypto.randomUUID(),
+      incomeSourceId: source?.id ?? ONE_OFF_INCOME_SOURCE_ID,
+      incomeSourceLabel: source?.label ?? 'One-off income',
+      amount,
+      paidAt: actualPayDate,
+      note: actualPayNote.trim() || undefined,
+    }
+    const updatedHistory = [historyEntry, ...incomePaymentHistory]
+    const updatedSources = source
+      ? incomeSources.map((item) => item.id === source.id ? { ...item, lastPayDate: actualPayDate } : item)
+      : incomeSources
+    setIncomePaymentHistory(updatedHistory)
+    setIncomeSources(updatedSources)
+    setActualPayAmount('')
+    setActualPayNote('')
+    saveBudgetProfileAsync(
+      { categories, bills, incomeSources: updatedSources, billPayments, billPaymentHistory, incomePaymentHistory: updatedHistory, transactions },
       currentUser
     )
   }
@@ -517,7 +602,7 @@ export default function App() {
     setTransactions(updated)
     resetTransactionForm()
     saveBudgetProfileAsync(
-      { categories, bills, incomeSources, billPayments, billPaymentHistory, transactions: updated },
+      { categories, bills, incomeSources, billPayments, billPaymentHistory, incomePaymentHistory, transactions: updated },
       currentUser
     )
   }
@@ -541,7 +626,7 @@ export default function App() {
     setTransactions(updated)
     if (editingTxId === txId) resetTransactionForm()
     saveBudgetProfileAsync(
-      { categories, bills, incomeSources, billPayments, billPaymentHistory, transactions: updated },
+      { categories, bills, incomeSources, billPayments, billPaymentHistory, incomePaymentHistory, transactions: updated },
       currentUser
     )
   }
@@ -561,13 +646,14 @@ export default function App() {
       name: editBillForm.name.trim() || 'Untitled Bill',
       anticipatedAmount: Number(editBillForm.anticipatedAmount) || 0,
       dueDay: Number(editBillForm.dueDay) || 1,
+      categoryType: editBillForm.categoryType || 'expense',
       paymentUrl: url,
     }
     const updated = bills.map((b) => (b.id === updatedBill.id ? updatedBill : b))
     setBills(updated)
     setInlineEditingBillId(null)
     setEditBillForm(null)
-    saveBudgetProfileAsync({ categories, bills: updated, incomeSources, billPayments, billPaymentHistory, transactions }, currentUser)
+    saveBudgetProfileAsync({ categories, bills: updated, incomeSources, billPayments, billPaymentHistory, incomePaymentHistory, transactions }, currentUser)
   }
 
   function cancelInlineEditBill() {
@@ -588,12 +674,13 @@ export default function App() {
       name: editCategoryForm.name.trim() || 'Untitled Category',
       budgetedAmount: Number(editCategoryForm.budgetedAmount) || 0,
       frequency: editCategoryForm.frequency || 'monthly',
+      categoryType: editCategoryForm.categoryType || 'expense',
     }
     const updated = categories.map((c) => (c.id === updatedCategory.id ? updatedCategory : c))
     setCategories(updated)
     setInlineEditingCategoryId(null)
     setEditCategoryForm(null)
-    saveBudgetProfileAsync({ categories: updated, bills, incomeSources, billPayments, billPaymentHistory, transactions }, currentUser)
+    saveBudgetProfileAsync({ categories: updated, bills, incomeSources, billPayments, billPaymentHistory, incomePaymentHistory, transactions }, currentUser)
   }
 
   function cancelInlineEditCategory() {
@@ -622,14 +709,34 @@ export default function App() {
     (sum, inc) => sum + computeMonthlyAmount(Number(inc.estimatedTakeHome) || 0, inc.frequency),
     0
   )
-  const totalMonthlyExpensesEst = categories.reduce(
+  const totalMonthlyCategoryObligations = categories.reduce(
     (sum, c) => sum + computeMonthlyAmount(Number(c.budgetedAmount) || 0, c.frequency),
     0
   )
+  const totalMonthlyExpensesEst = categories
+    .filter((category) => category.categoryType !== 'debt')
+    .reduce((sum, c) => sum + computeMonthlyAmount(Number(c.budgetedAmount) || 0, c.frequency), 0)
+  const monthlyDebtTotal =
+    bills
+      .filter((bill) => bill.categoryType === 'debt')
+      .reduce((sum, bill) => sum + (Number(bill.anticipatedAmount) || 0), 0) +
+    categories
+      .filter((category) => category.categoryType === 'debt')
+      .reduce((sum, category) => sum + computeMonthlyAmount(Number(category.budgetedAmount) || 0, category.frequency), 0)
+  const monthlyExpenseTotal =
+    bills
+      .filter((bill) => bill.categoryType !== 'debt')
+      .reduce((sum, bill) => sum + (Number(bill.anticipatedAmount) || 0), 0) +
+    categories
+      .filter((category) => category.categoryType !== 'debt')
+      .reduce((sum, category) => sum + computeMonthlyAmount(Number(category.budgetedAmount) || 0, category.frequency), 0)
   const goldVaultTarget = totalMonthlyIncomeEst * 0.1
+  const savingsPercent = totalMonthlyIncomeEst > 0 ? (goldVaultTarget / totalMonthlyIncomeEst) * 100 : 0
+  const debtPercent = totalMonthlyIncomeEst > 0 ? (monthlyDebtTotal / totalMonthlyIncomeEst) * 100 : 0
+  const expensePercent = totalMonthlyIncomeEst > 0 ? (monthlyExpenseTotal / totalMonthlyIncomeEst) * 100 : 0
   const freeCashFlow = Math.max(
     0,
-    totalMonthlyIncomeEst - totalMonthlyBills - totalMonthlyExpensesEst - goldVaultTarget
+    totalMonthlyIncomeEst - totalMonthlyBills - totalMonthlyCategoryObligations - goldVaultTarget
   )
 
   const goldKeep = sampleMonthlyIncome * 0.1
@@ -641,6 +748,12 @@ export default function App() {
     bills,
     incomeSources
   )
+  const selectedActualIncomeSource = incomeSources.find((source) => source.id === actualIncomeSourceId) ?? incomeSources[0] ?? null
+  const actualIncomeSelectValue = actualIncomeSourceId || selectedActualIncomeSource?.id || ONE_OFF_INCOME_SOURCE_ID
+  const currentPayPeriod = getHistoryPeriod(new Date().toISOString().split('T')[0], 'pay-periods', primaryIncome)
+  const currentPeriodActualIncome = incomePaymentHistory
+    .filter((payment) => getHistoryPeriod(payment.paidAt, 'pay-periods', primaryIncome).key === currentPayPeriod.key)
+    .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0)
 
   // Filtered transactions for Option 2
   const filteredTransactions = transactions.filter((t) =>
@@ -651,17 +764,20 @@ export default function App() {
     transactions,
     categories,
     bills,
+    billPayments,
     billPaymentHistory,
+    incomePaymentHistory,
     scope: historyScope,
     incomeSource: primaryIncome,
   })
+  const historicalIncomeTotal = historicalBuckets.reduce((sum, bucket) => sum + bucket.incomeTotal, 0)
   const historicalBillTotal = historicalBuckets.reduce((sum, bucket) => sum + bucket.billTotal, 0)
   const historicalExpenseTotal = historicalBuckets.reduce((sum, bucket) => sum + bucket.expenseTotal, 0)
   const historicalGrandTotal = historicalBillTotal + historicalExpenseTotal
-  const averageHistoricalPeriod = historicalBuckets.length > 0 ? historicalGrandTotal / historicalBuckets.length : 0
+  const historicalNetTotal = historicalIncomeTotal - historicalGrandTotal
 
   return (
-    <div className="app-shell">
+    <div className={'app-shell ' + (theme === 'dark' ? 'dark-mode' : 'light-mode')}>
       <header className="topbar" aria-label="Main navigation">
         <button
           type="button"
@@ -683,6 +799,10 @@ export default function App() {
             <a href="#cures" className="nav-link">The 7 Cures</a>
             <a href="#features" className="nav-link">Features</a>
             <div className="nav-actions">
+              <button type="button" className="theme-toggle-btn" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Use light mode' : 'Use dark mode'} title={theme === 'dark' ? 'Use light mode' : 'Use dark mode'}>
+                {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+                <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
+              </button>
               {currentUser ? (
                 <>
                   <div className="user-badge" title={'Signed in as ' + currentUser.email}>
@@ -704,6 +824,10 @@ export default function App() {
           <div className="setup-nav-status">
             <button type="button" className="back-to-home-link" onClick={() => setView('landing')}><ArrowLeft size={16} /> Landing</button>
             {bills.length > 0 && <button type="button" className="back-to-home-link" onClick={() => setView('home')}>Go to Home</button>}
+            <button type="button" className="theme-toggle-btn" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Use light mode' : 'Use dark mode'} title={theme === 'dark' ? 'Use light mode' : 'Use dark mode'}>
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
+            </button>
             {currentUser && (
               <div className="user-badge" title={'Signed in as ' + currentUser.email}>
                 <User size={14} />
@@ -714,11 +838,11 @@ export default function App() {
           </div>
         ) : (
           <div className="home-topbar-nav">
-            <div className="home-nav-links">
-              <button type="button" className="btn-ghost-sm" onClick={() => { setActiveStep(0); setView('setup'); }}>Edit Financials Setup</button>
-              <button type="button" className="btn-ghost-sm" onClick={() => setView('landing')}>Landing Page</button>
-            </div>
-            <div className="nav-actions">
+            <div className="nav-actions home-actions">
+              <button type="button" className="theme-toggle-btn" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Use light mode' : 'Use dark mode'} title={theme === 'dark' ? 'Use light mode' : 'Use dark mode'}>
+                {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+                <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
+              </button>
               {currentUser && (
                 <div className="user-badge" title={'Signed in as ' + currentUser.email}>
                   <User size={14} />
@@ -736,10 +860,6 @@ export default function App() {
         <main className="landing-container">
           <section className="hero-section">
             <div className="hero-content">
-              <div className="hero-badge">
-                <Sparkles size={14} />
-                <span>Inspired by George S. Clason's Classic</span>
-              </div>
               <h1 className="hero-title">
                 Build Enduring Wealth.<br />
                 <span className="hero-gold-text">Master Your Gold</span> Paycheck by Paycheck.
@@ -911,7 +1031,7 @@ export default function App() {
                         {bills.map((bill) => (
                           <div className="bill-row" key={bill.id}>
                             <span className="bill-icon" aria-hidden="true"><CreditCard size={16} /></span>
-                            <span className="bill-details"><strong>{bill.name}<em>{formatCurrency(bill.anticipatedAmount)}</em></strong><small>Due the {bill.dueDay}{ordinalSuffix(bill.dueDay)} &bull; {bill.paymentMethod === 'autopay' ? 'Autopay' : 'Manual pay'}</small></span>
+                            <span className="bill-details"><strong>{bill.name}<em>{formatCurrency(bill.anticipatedAmount)}</em></strong><small>{categoryTypeLabel(bill.categoryType)} &bull; Due the {bill.dueDay}{ordinalSuffix(bill.dueDay)} &bull; {bill.paymentMethod === 'autopay' ? 'Autopay' : 'Manual pay'}</small></span>
                             {bill.paymentUrl && (<a className="payment-link" href={bill.paymentUrl} target="_blank" rel="noreferrer" aria-label={'Open ' + bill.name + ' payment website'} title={'Open ' + bill.name + ' payment website'}><ExternalLink size={16} /></a>)}
                             <button className="icon-button" type="button" onClick={() => editBill(bill)} aria-label={'Edit ' + bill.name} title={'Edit ' + bill.name}><Pencil size={16} /></button>
                             <button className="icon-button" type="button" onClick={() => removeBill(bill.id)} aria-label={'Remove ' + bill.name} title={'Remove ' + bill.name}><Trash2 size={17} /></button>
@@ -923,6 +1043,7 @@ export default function App() {
                       <input value={billName} onChange={(event) => setBillName(event.target.value)} placeholder="Bill name, e.g. Rent / Mortgage" aria-label="Bill name" required />
                       <label className="bill-amount-field"><span>Anticipated amount</span><input value={anticipatedBillAmount} onChange={(event) => setAnticipatedBillAmount(event.target.value)} placeholder="0.00" aria-label="Anticipated bill amount" type="number" min="0" step="0.01" inputMode="decimal" required /></label>
                       <input value={paymentUrl} onChange={(event) => setPaymentUrl(event.target.value)} placeholder="Payment website URL (optional)" aria-label="Payment website URL (optional)" />
+                      <label className="compact-field"><span>Category</span><select value={billCategoryType} onChange={(event) => setBillCategoryType(event.target.value as SpendingCategoryType)} aria-label="Bill category type"><option value="expense">Expense</option><option value="debt">Debt</option></select></label>
                       <label className="compact-field"><CalendarDays size={15} /><span>Due day</span><select value={billDueDay} onChange={(event) => setBillDueDay(Number(event.target.value))} aria-label="Monthly due day">{dueDays.map((day) => (<option key={day} value={day}>{day}{ordinalSuffix(day)}</option>))}</select></label>
                       <fieldset className="payment-method"><legend>Payment method</legend><label><input type="radio" name="payment-method" checked={paymentMethod === 'autopay'} onChange={() => setPaymentMethod('autopay')} /> Autopay</label><label><input type="radio" name="payment-method" checked={paymentMethod === 'manual'} onChange={() => setPaymentMethod('manual')} /> Manual</label></fieldset>
                       <button className="add-bill-button" type="submit">{editingBillId ? <Pencil size={17} /> : <Plus size={18} />}{editingBillId ? 'Save changes' : 'Add bill'}</button>
@@ -956,7 +1077,7 @@ export default function App() {
                                 <em>{formatCurrency(cat.budgetedAmount)}</em>
                               </strong>
                               <small>
-                                {frequencyLabel(cat.frequency)} &bull; {cat.frequency === 'monthly' ? 'Monthly envelope' : 'Est. ~' + formatCurrency(computeMonthlyAmount(cat.budgetedAmount, cat.frequency)) + '/mo'}
+                                {categoryTypeLabel(cat.categoryType)} &bull; {frequencyLabel(cat.frequency)} &bull; {cat.frequency === 'monthly' ? 'Monthly envelope' : 'Est. ~' + formatCurrency(computeMonthlyAmount(cat.budgetedAmount, cat.frequency)) + '/mo'}
                               </small>
                             </span>
                             <button className="icon-button" type="button" onClick={() => editCategory(cat)} aria-label={'Edit ' + cat.name} title={'Edit ' + cat.name}><Pencil size={16} /></button>
@@ -986,6 +1107,17 @@ export default function App() {
                           inputMode="decimal"
                           required
                         />
+                      </label>
+                      <label className="compact-field" style={{ gridColumn: '1 / -1' }}>
+                        <span>Category</span>
+                        <select
+                          value={categoryType}
+                          onChange={(event) => setCategoryType(event.target.value as SpendingCategoryType)}
+                          aria-label="Expense category type"
+                        >
+                          <option value="expense">Expense</option>
+                          <option value="debt">Debt</option>
+                        </select>
                       </label>
                       <label className="compact-field" style={{ gridColumn: '1 / -1' }}>
                         <span>Expected frequency</span>
@@ -1033,7 +1165,6 @@ export default function App() {
           <div className="home-container">
             <div className="home-welcome-header">
               <div className="welcome-meta">
-                <span className="home-eyebrow">COMMAND CENTER</span>
                 <h1>Welcome, {currentUser?.name || 'Friend of Babylon'}.</h1>
                 <p className="welcome-subtext">Your financials are configured. Review your high-priority actions or inspect and adjust your master schedule below.</p>
               </div>
@@ -1050,10 +1181,6 @@ export default function App() {
                   <span className="stat-label">Budgeted Expenses</span>
                   <strong className="stat-val" style={{ color: '#4b6b28' }}>{formatCurrency(totalMonthlyExpensesEst)}</strong>
                 </div>
-                <div className="stat-card stat-gold">
-                  <span className="stat-label">Gold Vault (10%)</span>
-                  <strong className="stat-val text-gold">{formatCurrency(goldVaultTarget)}</strong>
-                </div>
                 <div className="stat-card stat-cushion">
                   <span className="stat-label">Free Cash Flow</span>
                   <strong className="stat-val text-cushion">{formatCurrency(freeCashFlow)}</strong>
@@ -1061,36 +1188,67 @@ export default function App() {
               </div>
             </div>
 
-            {/* WHAT DO YOU WANT TO DO NOW? */}
+            <section className="allocation-overview-section" aria-labelledby="allocation-overview-title">
+              <div className="allocation-overview-header">
+                <span className="table-eyebrow">10 / 20 / 70 CHECK</span>
+                <h2 id="allocation-overview-title">Income Allocation</h2>
+                <p>Track how your monthly income is assigned across savings, debt, and living expenses.</p>
+              </div>
+              <div className="allocation-overview-grid">
+                <div className="allocation-overview-card allocation-savings-card">
+                  <div className="allocation-overview-top"><span>Savings</span><strong>{formatPercent(savingsPercent)}</strong></div>
+                  <div className="allocation-meter"><div style={{ width: `${Math.min(savingsPercent, 100)}%` }} /></div>
+                  <p>{formatCurrency(goldVaultTarget)} planned monthly savings &bull; 10% target</p>
+                </div>
+                <div className={'allocation-overview-card ' + (debtPercent > 20 ? 'over-target' : '')}>
+                  <div className="allocation-overview-top"><span>Debt</span><strong>{formatPercent(debtPercent)}</strong></div>
+                  <div className="allocation-meter"><div style={{ width: `${Math.min(debtPercent, 100)}%` }} /></div>
+                  <p>{formatCurrency(monthlyDebtTotal)} assigned to debt &bull; 20% max</p>
+                </div>
+                <div className={'allocation-overview-card ' + (expensePercent > 70 ? 'over-target' : '')}>
+                  <div className="allocation-overview-top"><span>Expenses</span><strong>{formatPercent(expensePercent)}</strong></div>
+                  <div className="allocation-meter"><div style={{ width: `${Math.min(expensePercent, 100)}%` }} /></div>
+                  <p>{formatCurrency(monthlyExpenseTotal)} assigned to expenses &bull; 70% max</p>
+                </div>
+              </div>
+            </section>
+
+            {/* TO DOS */}
             <section className="action-hub-section" aria-labelledby="action-hub-title">
               <div className="action-hub-header">
-                <h2 id="action-hub-title">What do you want to do now?</h2>
+                <h2 id="action-hub-title">To Dos:</h2>
                 <p>Choose an action to manage today's money flow:</p>
               </div>
               <div className="action-cards-grid">
+                <div className="action-card action-card-income" onClick={() => setActiveFeatureModal('post-income')} role="button" tabIndex={0}>
+                  <div className="action-card-top"><div className="action-icon-box icon-income"><Wallet size={24} /></div></div>
+                  <h3>1. Post Actual Income</h3>
+                  <p>Record the real take-home pay received for this pay period and update your current paycheck anchor.</p>
+                  <div className="action-card-footer"><span>Post Actual Pay ({incomeSources.length} sources) &rarr;</span></div>
+                </div>
                 <div className="action-card action-card-bills" onClick={() => setActiveFeatureModal('pay-bills')} role="button" tabIndex={0}>
-                  <div className="action-card-top"><div className="action-icon-box icon-bills"><CreditCard size={24} /></div><span className="action-step-badge">Option 1</span></div>
-                  <h3>1. Pay Bills</h3>
+                  <div className="action-card-top"><div className="action-icon-box icon-bills"><CreditCard size={24} /></div></div>
+                  <h3>2. Pay Bills</h3>
                   <p>View bills partitioned before vs after your next paycheck. Log actual amounts paid and optional confirmation codes.</p>
                   <div className="action-card-footer"><span>Open Pay Bills Workspace ({bills.length} bills) &rarr;</span></div>
                 </div>
                 <div className="action-card action-card-expenses" onClick={() => setActiveFeatureModal('code-expenses')} role="button" tabIndex={0}>
-                  <div className="action-card-top"><div className="action-icon-box icon-expenses"><Receipt size={24} /></div><span className="action-step-badge">Option 2</span></div>
-                  <h3>2. Code Previous Pay Period Expenses</h3>
+                  <div className="action-card-top"><div className="action-icon-box icon-expenses"><Receipt size={24} /></div></div>
+                  <h3>3. Code Previous Pay Period Expenses</h3>
                   <p>Log transactions with merchant and amount, and code each to your expense categories with live envelope tracking.</p>
                   <div className="action-card-footer"><span>Open Expense Coding Ledger ({transactions.length} items) &rarr;</span></div>
                 </div>
                 <div className="action-card action-card-budgets" onClick={() => setActiveFeatureModal('view-budgets')} role="button" tabIndex={0}>
-                  <div className="action-card-top"><div className="action-icon-box icon-budgets"><PieChart size={24} /></div><span className="action-step-badge">Option 3</span></div>
-                  <h3>3. View Budgets</h3>
+                  <div className="action-card-top"><div className="action-icon-box icon-budgets"><PieChart size={24} /></div></div>
+                  <h3>4. View Current Pay Period Budget</h3>
                   <p>Inspect your Babylonian 10/20/70 distribution, monitor pay-period envelopes, and forecast long-term wealth compounding.</p>
                   <div className="action-card-footer"><span>Open Budget Overview &rarr;</span></div>
                 </div>
                 <div className="action-card action-card-history" onClick={() => setActiveFeatureModal('history')} role="button" tabIndex={0}>
-                  <div className="action-card-top"><div className="action-icon-box icon-history"><BarChart3 size={24} /></div><span className="action-step-badge">Option 4</span></div>
-                  <h3>4. See Spending History</h3>
-                  <p>Compare bill payments and coded expenses across prior pay periods, months, and years.</p>
-                  <div className="action-card-footer"><span>Open Historical Spending ({historicalBuckets.length} periods) &rarr;</span></div>
+                  <div className="action-card-top"><div className="action-icon-box icon-history"><BarChart3 size={24} /></div></div>
+                  <h3>5. See History</h3>
+                  <p>Compare posted income, bill payments, and coded expenses across prior pay periods, months, and years.</p>
+                  <div className="action-card-footer"><span>Open History ({historicalBuckets.length} periods) &rarr;</span></div>
                 </div>
               </div>
             </section>
@@ -1120,10 +1278,10 @@ export default function App() {
               {activeTab === 'bills' && (
                 <div className="table-wrapper">
                   <table className="master-data-table">
-                    <thead><tr><th>Bill Name</th><th>Anticipated Amount</th><th>Due Day</th><th>Payment Method</th><th>Payment Link</th><th style={{ textAlign: 'right' }}>Actions</th></tr></thead>
+                    <thead><tr><th>Bill Name</th><th>Category</th><th>Anticipated Amount</th><th>Due Day</th><th>Payment Method</th><th>Payment Link</th><th style={{ textAlign: 'right' }}>Actions</th></tr></thead>
                     <tbody>
                       {bills.length === 0 ? (
-                        <tr><td colSpan={6} className="empty-table-cell">No bills added yet. Use the quick form below or Edit Financials Setup to add your recurring bills.</td></tr>
+                        <tr><td colSpan={7} className="empty-table-cell">No bills added yet. Use the quick form below or Edit Financials Setup to add your recurring bills.</td></tr>
                       ) : (
                         bills.map((bill) => {
                           const isEditing = inlineEditingBillId === bill.id
@@ -1132,6 +1290,7 @@ export default function App() {
                               {isEditing && editBillForm ? (
                                 <>
                                   <td><input className="table-input" value={editBillForm.name} onChange={(e) => setEditBillForm({ ...editBillForm, name: e.target.value })} placeholder="Bill name" required /></td>
+                                  <td><select className="table-select" value={editBillForm.categoryType} onChange={(e) => setEditBillForm({ ...editBillForm, categoryType: e.target.value as SpendingCategoryType })}><option value="expense">Expense</option><option value="debt">Debt</option></select></td>
                                   <td><div className="table-amount-wrap"><span>$</span><input className="table-input" type="number" step="0.01" min="0" value={editBillForm.anticipatedAmount} onChange={(e) => setEditBillForm({ ...editBillForm, anticipatedAmount: Number(e.target.value) })} required /></div></td>
                                   <td><select className="table-select" value={editBillForm.dueDay} onChange={(e) => setEditBillForm({ ...editBillForm, dueDay: Number(e.target.value) })}>{dueDays.map((d) => (<option key={d} value={d}>{d}{ordinalSuffix(d)} of month</option>))}</select></td>
                                   <td><select className="table-select" value={editBillForm.paymentMethod} onChange={(e) => setEditBillForm({ ...editBillForm, paymentMethod: e.target.value as PaymentMethod })}><option value="autopay">Autopay</option><option value="manual">Manual Pay</option></select></td>
@@ -1141,6 +1300,7 @@ export default function App() {
                               ) : (
                                 <>
                                   <td><div className="bill-title-cell"><span className="table-bill-icon"><CreditCard size={15} /></span><strong>{bill.name}</strong></div></td>
+                                  <td><span className={'status-pill ' + (bill.categoryType === 'debt' ? 'pill-debt' : 'pill-expense')}>{categoryTypeLabel(bill.categoryType)}</span></td>
                                   <td><span className="table-amount-badge">{formatCurrency(bill.anticipatedAmount)}</span></td>
                                   <td><span className="table-due-badge">Due {bill.dueDay}{ordinalSuffix(bill.dueDay)}</span></td>
                                   <td><span className={'status-pill ' + (bill.paymentMethod === 'autopay' ? 'pill-autopay' : 'pill-manual')}>{bill.paymentMethod === 'autopay' ? 'Autopay' : 'Manual'}</span></td>
@@ -1158,6 +1318,7 @@ export default function App() {
                     <h4>Add another bill directly:</h4>
                     <form className="quick-bill-form" onSubmit={addBill}>
                       <input value={billName} onChange={(e) => setBillName(e.target.value)} placeholder="Bill name" required />
+                      <select value={billCategoryType} onChange={(e) => setBillCategoryType(e.target.value as SpendingCategoryType)}><option value="expense">Expense</option><option value="debt">Debt</option></select>
                       <input type="number" step="0.01" min="0" value={anticipatedBillAmount} onChange={(e) => setAnticipatedBillAmount(e.target.value)} placeholder="$ Amount" required />
                       <select value={billDueDay} onChange={(e) => setBillDueDay(Number(e.target.value))}>{dueDays.map((d) => (<option key={d} value={d}>Due {d}{ordinalSuffix(d)}</option>))}</select>
                       <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}><option value="autopay">Autopay</option><option value="manual">Manual</option></select>
@@ -1175,6 +1336,7 @@ export default function App() {
                     <thead>
                       <tr>
                         <th>Expense Category</th>
+                        <th>Category</th>
                         <th>Budgeted Amount</th>
                         <th>Expected Frequency</th>
                         <th>Est. Monthly Equivalent</th>
@@ -1184,7 +1346,7 @@ export default function App() {
                     <tbody>
                       {categories.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="empty-table-cell">
+                          <td colSpan={6} className="empty-table-cell">
                             No expense categories added yet. Add a category like Groceries, Fuel, or Dining below.
                           </td>
                         </tr>
@@ -1205,6 +1367,21 @@ export default function App() {
                                       placeholder="Category name"
                                       required
                                     />
+                                  </td>
+                                  <td>
+                                    <select
+                                      className="table-select"
+                                      value={editCategoryForm.categoryType}
+                                      onChange={(e) =>
+                                        setEditCategoryForm({
+                                          ...editCategoryForm,
+                                          categoryType: e.target.value as SpendingCategoryType,
+                                        })
+                                      }
+                                    >
+                                      <option value="expense">Expense</option>
+                                      <option value="debt">Debt</option>
+                                    </select>
                                   </td>
                                   <td>
                                     <div className="table-amount-wrap">
@@ -1280,6 +1457,11 @@ export default function App() {
                                     </div>
                                   </td>
                                   <td>
+                                    <span className={'status-pill ' + (cat.categoryType === 'debt' ? 'pill-debt' : 'pill-expense')}>
+                                      {categoryTypeLabel(cat.categoryType)}
+                                    </span>
+                                  </td>
+                                  <td>
                                     <span className="table-amount-badge" style={{ color: '#2d5b1d' }}>
                                       {formatCurrency(cat.budgetedAmount)}
                                     </span>
@@ -1327,7 +1509,7 @@ export default function App() {
 
                   <div className="quick-add-footer">
                     <h4>Add another expense category:</h4>
-                    <form className="quick-bill-form" style={{ gridTemplateColumns: '2fr 1fr 1.5fr auto' }} onSubmit={addCategory}>
+                    <form className="quick-bill-form" style={{ gridTemplateColumns: '2fr 1fr 1fr 1.5fr auto' }} onSubmit={addCategory}>
                       <input
                         value={categoryName}
                         onChange={(e) => setCategoryName(e.target.value)}
@@ -1343,6 +1525,10 @@ export default function App() {
                         placeholder="$ Budgeted Amount"
                         required
                       />
+                      <select value={categoryType} onChange={(e) => setCategoryType(e.target.value as SpendingCategoryType)} aria-label="Expense category type">
+                        <option value="expense">Expense</option>
+                        <option value="debt">Debt</option>
+                      </select>
                       <select
                         value={categoryFrequency}
                         onChange={(e) => setCategoryFrequency(e.target.value as ExpenseFrequency)}
@@ -1400,7 +1586,114 @@ export default function App() {
           >
             <button className="modal-close-btn" type="button" onClick={() => setActiveFeatureModal(null)} aria-label="Close"><X size={20} /></button>
             
-            {/* OPTION 1: PAY BILLS SPLIT BY PAYCHECK */}
+            {/* OPTION 1: POST ACTUAL INCOME */}
+            {activeFeatureModal === 'post-income' && (
+              <div className="feature-modal-content">
+                <div className="feature-modal-header">
+                  <div className="action-icon-box icon-income"><Wallet size={26} /></div>
+                  <div>
+                    <h2>Post Actual Income</h2>
+                    <p>Record the take-home pay that actually landed for this pay period. This also updates the selected source's last paid date.</p>
+                  </div>
+                </div>
+
+                <div className="actual-income-grid">
+                  <form className="actual-income-card" onSubmit={postActualIncome}>
+                    <div className="add-tx-card-head">
+                      <span className="add-tx-badge">Current Period</span>
+                      <h4>{currentPayPeriod.label}</h4>
+                    </div>
+                    <div className="actual-income-form-grid">
+                      <label className="tx-form-field">
+                        <span>Income Source</span>
+                        <select
+                          value={actualIncomeSelectValue}
+                          onChange={(e) => setActualIncomeSourceId(e.target.value)}
+                          required
+                        >
+                          {incomeSources.map((source) => (
+                            <option key={source.id} value={source.id}>
+                              {source.label} ({formatCurrency(source.estimatedTakeHome)} est.)
+                            </option>
+                          ))}
+                          <option value={ONE_OFF_INCOME_SOURCE_ID}>Additional one-off income (bonus, etc.)</option>
+                        </select>
+                      </label>
+                      <label className="tx-form-field">
+                        <span>Pay Date</span>
+                        <input type="date" value={actualPayDate} onChange={(e) => setActualPayDate(e.target.value)} required />
+                      </label>
+                      <label className="tx-form-field">
+                        <span>Actual Take-Home ($)</span>
+                        <div className="tx-amt-wrap">
+                          <span>$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            value={actualPayAmount}
+                            onChange={(e) => setActualPayAmount(e.target.value)}
+                            placeholder="0.00"
+                            required
+                          />
+                        </div>
+                      </label>
+                      <label className="tx-form-field actual-income-note-field">
+                        <span>Note</span>
+                        <input value={actualPayNote} onChange={(e) => setActualPayNote(e.target.value)} placeholder="Optional memo, e.g. bonus" />
+                      </label>
+                    </div>
+                    <button type="submit" className="btn-add-tx">
+                      <Plus size={16} /> Post Income
+                    </button>
+                  </form>
+
+                  <div className="actual-income-summary-card">
+                    <span className="stat-label">Posted This Pay Period</span>
+                    <strong>{formatCurrency(currentPeriodActualIncome)}</strong>
+                    <p>Estimated monthly income remains {formatCurrency(totalMonthlyIncomeEst)} for planning; posted pay records track what actually arrived.</p>
+                  </div>
+                </div>
+
+                <div className="tx-ledger-section">
+                  <div className="tx-ledger-header">
+                    <div>
+                      <h3>Recent Actual Pay</h3>
+                      <p>{incomePaymentHistory.length} posted income record{incomePaymentHistory.length === 1 ? '' : 's'}</p>
+                    </div>
+                  </div>
+                  <div className="table-responsive-wrapper">
+                    <table className="master-data-table tx-table">
+                      <thead>
+                        <tr><th>Date</th><th>Income Source</th><th>Note</th><th style={{ textAlign: 'right' }}>Actual Pay</th></tr>
+                      </thead>
+                      <tbody>
+                        {incomePaymentHistory.length === 0 ? (
+                          <tr><td colSpan={4} className="empty-table-cell">No actual income has been posted yet.</td></tr>
+                        ) : (
+                          incomePaymentHistory.slice(0, 12).map((payment) => (
+                            <tr key={payment.id}>
+                              <td><span className="tx-date-badge">{formatDate(payment.paidAt)}</span></td>
+                              <td><strong className="tx-desc-text">{payment.incomeSourceLabel}</strong></td>
+                              <td>{payment.note ? <span>{payment.note}</span> : <span className="text-muted-dash">&mdash;</span>}</td>
+                              <td style={{ textAlign: 'right' }}><span className="tx-amount-text text-gold">{formatCurrency(payment.amount)}</span></td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="modal-footer-actions">
+                  <button type="button" className="btn-gold" onClick={() => setActiveFeatureModal(null)}>
+                    Save Income &amp; Return to Dashboard
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {/* OPTION 2: PAY BILLS SPLIT BY PAYCHECK */}
             {activeFeatureModal === 'pay-bills' && (
               <div className="feature-modal-content">
                 <div className="feature-modal-header">
@@ -1705,7 +1998,7 @@ export default function App() {
               </div>
             )}
 
-            {/* OPTION 2: FRESH, USER-FRIENDLY TRANSACTION EXPENSE CODING */}
+            {/* OPTION 3: FRESH, USER-FRIENDLY TRANSACTION EXPENSE CODING */}
             {activeFeatureModal === 'code-expenses' && (
               <div className="feature-modal-content">
                 <div className="feature-modal-header">
@@ -1943,14 +2236,14 @@ export default function App() {
               </div>
             )}
 
-            {/* OPTION 4: HISTORICAL SPENDING */}
+            {/* OPTION 5: HISTORY */}
             {activeFeatureModal === 'history' && (
               <div className="feature-modal-content">
                 <div className="feature-modal-header history-modal-header">
                   <div className="action-icon-box icon-history"><BarChart3 size={26} /></div>
                   <div>
                     <h2>Historical Spending</h2>
-                    <p>Review what has actually been spent on bills and expense categories across prior pay periods, months, and years.</p>
+                    <p>Review what actually came in and went out across prior pay periods, months, and years.</p>
                   </div>
                 </div>
 
@@ -1964,12 +2257,16 @@ export default function App() {
                 </div>
 
                 <div className="history-summary-grid">
+                  <div className="history-summary-card income-card">
+                    <span>Total Actual Income</span>
+                    <strong>{formatCurrency(historicalIncomeTotal)}</strong>
+                  </div>
                   <div className="history-summary-card">
-                    <span>Total Bills Paid</span>
+                    <span>Total Actual Bills Paid</span>
                     <strong>{formatCurrency(historicalBillTotal)}</strong>
                   </div>
                   <div className="history-summary-card">
-                    <span>Total Coded Expenses</span>
+                    <span>Total Actual Expenses</span>
                     <strong>{formatCurrency(historicalExpenseTotal)}</strong>
                   </div>
                   <div className="history-summary-card total-card">
@@ -1977,8 +2274,8 @@ export default function App() {
                     <strong>{formatCurrency(historicalGrandTotal)}</strong>
                   </div>
                   <div className="history-summary-card">
-                    <span>Average Per Period</span>
-                    <strong>{formatCurrency(averageHistoricalPeriod)}</strong>
+                    <span>Historical Net</span>
+                    <strong>{formatCurrency(historicalNetTotal)}</strong>
                   </div>
                 </div>
 
@@ -1986,7 +2283,7 @@ export default function App() {
                   <div className="history-empty-state">
                     <BarChart3 size={24} />
                     <h3>No historical spending yet</h3>
-                    <p>Mark manual bills as paid and code expense transactions to build your historical ledger.</p>
+                    <p>Post actual income, mark manual bills as paid, and code expense transactions to build your historical ledger.</p>
                   </div>
                 ) : (
                   <div className="history-period-list">
@@ -1998,16 +2295,54 @@ export default function App() {
                             <h3>{bucket.label}</h3>
                           </div>
                           <div className="history-period-total">
-                            <span>Total Spent</span>
-                            <strong>{formatCurrency(bucket.billTotal + bucket.expenseTotal)}</strong>
+                            <span>Net</span>
+                            <strong>{formatCurrency(bucket.incomeTotal - bucket.billTotal - bucket.expenseTotal)}</strong>
+                          </div>
+                        </div>
+
+                        <div className="history-allocation-check" aria-label="Historical 10 20 70 check">
+                          <div className="history-allocation-item savings-item">
+                            <span>Savings</span>
+                            <strong>{formatPercent(bucket.incomeTotal > 0 ? 10 : 0)}</strong>
+                            <small>{formatCurrency(bucket.incomeTotal * 0.1)} target</small>
+                          </div>
+                          <div className={'history-allocation-item ' + (bucket.incomeTotal > 0 && (bucket.debtAllocationTotal / bucket.incomeTotal) * 100 > 20 ? 'over-target' : '')}>
+                            <span>Debt</span>
+                            <strong>{formatPercent(bucket.incomeTotal > 0 ? (bucket.debtAllocationTotal / bucket.incomeTotal) * 100 : 0)}</strong>
+                            <small>{formatCurrency(bucket.debtAllocationTotal)} actual &bull; 20% max</small>
+                          </div>
+                          <div className={'history-allocation-item ' + (bucket.incomeTotal > 0 && (bucket.expenseAllocationTotal / bucket.incomeTotal) * 100 > 70 ? 'over-target' : '')}>
+                            <span>Expenses</span>
+                            <strong>{formatPercent(bucket.incomeTotal > 0 ? (bucket.expenseAllocationTotal / bucket.incomeTotal) * 100 : 0)}</strong>
+                            <small>{formatCurrency(bucket.expenseAllocationTotal)} actual &bull; 70% max</small>
                           </div>
                         </div>
 
                         <div className="history-breakdown-grid">
                           <div className="history-breakdown-panel">
                             <div className="history-breakdown-title">
+                              <Wallet size={16} />
+                              <span>Actual Income</span>
+                              <strong>{formatCurrency(bucket.incomeTotal)}</strong>
+                            </div>
+                            {bucket.incomeItems.length === 0 ? (
+                              <p className="history-muted-row">No actual income recorded.</p>
+                            ) : (
+                              <div className="history-mini-table">
+                                {bucket.incomeItems.map((item) => (
+                                  <div className="history-mini-row" key={item.id}>
+                                    <span>{item.name}</span>
+                                    <strong>{formatCurrency(item.amount)}</strong>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="history-breakdown-panel">
+                            <div className="history-breakdown-title">
                               <CreditCard size={16} />
-                              <span>Bills Paid</span>
+                              <span>Actual Bills Paid</span>
                               <strong>{formatCurrency(bucket.billTotal)}</strong>
                             </div>
                             {bucket.billItems.length === 0 ? (
@@ -2027,7 +2362,7 @@ export default function App() {
                           <div className="history-breakdown-panel">
                             <div className="history-breakdown-title">
                               <Tag size={16} />
-                              <span>Expense Categories</span>
+                              <span>Actual Expenses</span>
                               <strong>{formatCurrency(bucket.expenseTotal)}</strong>
                             </div>
                             {bucket.categoryItems.length === 0 ? (
@@ -2053,18 +2388,22 @@ export default function App() {
               </div>
             )}
 
-            {/* OPTION 3: VIEW BUDGETS */}
+            {/* OPTION 4: VIEW CURRENT PAY PERIOD BUDGET */}
             {activeFeatureModal === 'view-budgets' && (
               <div className="feature-modal-content">
                 <div className="feature-modal-header">
                   <div className="action-icon-box icon-budgets"><PieChart size={26} /></div>
                   <div>
-                    <h2>Babylonian Budget Distribution</h2>
-                    <p>Live snapshot based on your income, committed bills, and budgeted expenses.</p>
+                    <h2>Current Pay Period Budget</h2>
+                    <p>Live snapshot for {currentPayPeriod.label}, using posted actual income when available.</p>
                   </div>
                 </div>
 
                 <div className="budget-breakdown-cards">
+                  <div className="breakdown-card card-income">
+                    <div className="breakdown-head"><span>Actual Income Posted</span><strong>{formatCurrency(currentPeriodActualIncome)}</strong></div>
+                    <p>Income received in the current pay period. Post actual pay first to replace guesswork with real cash flow.</p>
+                  </div>
                   <div className="breakdown-card card-gold">
                     <div className="breakdown-head"><span>10% Gold Vault</span><strong>{formatCurrency(goldVaultTarget)}</strong></div>
                     <p>Your foundation savings. Paid first to yourself before anything else.</p>
@@ -2144,6 +2483,10 @@ function frequencyLabel(frequency: PayFrequency | ExpenseFrequency) {
   return frequencies.find((option) => option.value === frequency)?.label ?? frequency
 }
 
+function categoryTypeLabel(categoryType: SpendingCategoryType | undefined) {
+  return categoryType === 'debt' ? 'Debt' : 'Expense'
+}
+
 function formatDate(date: string) {
   if (!date) return ''
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(date + 'T00:00:00'))
@@ -2153,18 +2496,26 @@ function formatCurrency(amount: number | undefined) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount ?? 0)
 }
 
+function formatPercent(value: number) {
+  return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(value)}%`
+}
+
 function buildHistoricalBuckets({
   transactions,
   categories,
   bills,
+  billPayments,
   billPaymentHistory,
+  incomePaymentHistory,
   scope,
   incomeSource,
 }: {
   transactions: ExpenseTransaction[]
   categories: ExpenseCategory[]
   bills: Bill[]
+  billPayments: Record<string, BillPaymentRecord>
   billPaymentHistory: BillPaymentHistoryEntry[]
+  incomePaymentHistory: IncomePaymentHistoryEntry[]
   scope: HistoryScope
   incomeSource?: IncomeSource | null
 }): HistoricalBucket[] {
@@ -2180,7 +2531,11 @@ function buildHistoricalBuckets({
       label: period.label,
       sortValue: period.sortValue,
       billTotal: 0,
+      incomeTotal: 0,
       expenseTotal: 0,
+      debtAllocationTotal: 0,
+      expenseAllocationTotal: 0,
+      incomeItems: [],
       billItems: [],
       categoryItems: [],
     }
@@ -2201,13 +2556,40 @@ function buildHistoricalBuckets({
       bucket.categoryItems.push({ id: transaction.categoryId, name: categoryName, amount })
     }
     bucket.expenseTotal += amount
+    if (category?.categoryType === 'debt') {
+      bucket.debtAllocationTotal += amount
+    } else {
+      bucket.expenseAllocationTotal += amount
+    }
   }
 
-  for (const payment of billPaymentHistory) {
+  for (const payment of incomePaymentHistory) {
     const amount = Number(payment.amount) || 0
     if (!payment.paidAt || amount <= 0) continue
-    const bill = bills.find((item) => item.id === payment.billId)
     const bucket = getBucket(payment.paidAt)
+    const existingIncome = bucket.incomeItems.find((item) => item.id === payment.incomeSourceId)
+    if (existingIncome) {
+      existingIncome.amount += amount
+    } else {
+      bucket.incomeItems.push({ id: payment.incomeSourceId, name: payment.incomeSourceLabel, amount })
+    }
+    bucket.incomeTotal += amount
+  }
+
+  const processedCurrentBillIds = new Set<string>()
+  for (const payment of billPaymentHistory) {
+    const currentPayment = billPayments[payment.billId]
+    if (currentPayment && !currentPayment.paid) continue
+    if (currentPayment && processedCurrentBillIds.has(payment.billId)) continue
+    const currentActualAmount = Number(currentPayment?.actualAmount)
+    const amount = Number.isFinite(currentActualAmount) && currentActualAmount > 0
+      ? currentActualAmount
+      : Number(payment.amount) || 0
+    const paidAt = currentPayment?.paidAt ?? payment.paidAt
+    if (!paidAt || amount <= 0) continue
+    if (currentPayment) processedCurrentBillIds.add(payment.billId)
+    const bill = bills.find((item) => item.id === payment.billId)
+    const bucket = getBucket(paidAt)
     const billName = bill?.name ?? payment.billName ?? 'Bill payment'
     const existingBill = bucket.billItems.find((item) => item.id === payment.billId)
     if (existingBill) {
@@ -2216,11 +2598,17 @@ function buildHistoricalBuckets({
       bucket.billItems.push({ id: payment.billId, name: billName, amount })
     }
     bucket.billTotal += amount
+    if (bill?.categoryType === 'debt') {
+      bucket.debtAllocationTotal += amount
+    } else {
+      bucket.expenseAllocationTotal += amount
+    }
   }
 
   return [...buckets.values()]
     .map((bucket) => ({
       ...bucket,
+      incomeItems: bucket.incomeItems.sort((a, b) => b.amount - a.amount),
       billItems: bucket.billItems.sort((a, b) => b.amount - a.amount),
       categoryItems: bucket.categoryItems.sort((a, b) => b.amount - a.amount),
     }))

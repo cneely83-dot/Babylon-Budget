@@ -42,6 +42,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: clamp(16px, 3vw, 40px);
   padding: 0 clamp(20px, 6vw, 96px);
   background: rgba(247, 244, 235, 0.92);
   backdrop-filter: blur(12px);
@@ -66,6 +67,12 @@ button {
   gap: 10px;
   font-size: 19px;
   letter-spacing: .2px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.brand > span:last-child {
+  white-space: nowrap;
 }
 
 .brand strong {
@@ -87,7 +94,9 @@ button {
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: clamp(16px, 2.4vw, 28px);
+  flex: 1;
+  min-width: 0;
 }
 
 .nav-link {
@@ -106,7 +115,13 @@ button {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-left: 12px;
+  margin-left: auto;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+}
+
+.home-actions {
+  width: 100%;
 }
 
 .btn-ghost {
@@ -153,6 +168,25 @@ button {
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
+}
+
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #f7f9f3;
+  border: 1px solid #cbd8c4;
+  color: #1d453b;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 800;
+  transition: all 0.15s ease;
+}
+
+.theme-toggle-btn:hover {
+  background: #e7eedf;
+  border-color: #a9baa0;
 }
 
 .setup-nav-status {
@@ -1911,7 +1945,7 @@ button {
 .home-topbar-nav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   width: 100%;
   margin-left: 24px;
 }
@@ -2034,6 +2068,101 @@ button {
   border-color: #d6e5cc;
 }
 
+/* Income Allocation Overview */
+.allocation-overview-section {
+  background: #fffdfa;
+  border: 1px solid #dce2d6;
+  border-radius: 14px;
+  padding: clamp(22px, 3vw, 30px);
+  box-shadow: 0 14px 40px rgba(35, 59, 43, 0.05);
+}
+
+.allocation-overview-header {
+  margin-bottom: 18px;
+}
+
+.allocation-overview-header h2 {
+  margin: 0 0 6px;
+  color: #123932;
+  font: 600 24px 'Playfair Display', serif;
+}
+
+.allocation-overview-header p {
+  margin: 0;
+  color: #5f7067;
+  font-size: 13.5px;
+}
+
+.allocation-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.allocation-overview-card {
+  background: #f8faf5;
+  border: 1px solid #dbe5d2;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.allocation-savings-card {
+  background: #fdfbf2;
+  border-color: #f1e7be;
+}
+
+.allocation-overview-card.over-target {
+  background: #fdf1ef;
+  border-color: #efc8c0;
+}
+
+.allocation-overview-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.allocation-overview-top span {
+  color: #314d42;
+  font-weight: 800;
+}
+
+.allocation-overview-top strong {
+  color: #12372f;
+  font: 700 22px 'DM Mono', monospace;
+}
+
+.allocation-meter {
+  height: 8px;
+  background: #e6ecdf;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.allocation-meter div {
+  height: 100%;
+  background: #4f8a68;
+  border-radius: inherit;
+}
+
+.allocation-savings-card .allocation-meter div {
+  background: #cba332;
+}
+
+.allocation-overview-card.over-target .allocation-meter div {
+  background: #bd4635;
+}
+
+.allocation-overview-card p {
+  margin: 0;
+  color: #63756c;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
 /* Action Hub Section */
 .action-hub-section {
   display: flex;
@@ -2082,6 +2211,10 @@ button {
   height: 4px;
 }
 
+.action-card-income::before {
+  background: #3a8f73;
+}
+
 .action-card-bills::before {
   background: #e88674;
 }
@@ -2128,6 +2261,11 @@ button {
 .icon-budgets {
   background: #fdf5d8;
   color: #7d6013;
+}
+
+.icon-income {
+  background: #e1f3ec;
+  color: #1d7059;
 }
 
 .action-step-badge {
@@ -2317,6 +2455,18 @@ button {
   background: #f2f5ed;
   color: #5b6e63;
   border: 1px solid #dce2d6;
+}
+
+.pill-expense {
+  background: #eaf3e3;
+  color: #355d25;
+  border: 1px solid #c8dbc0;
+}
+
+.pill-debt {
+  background: #faece9;
+  color: #a43825;
+  border: 1px solid #f2c7c2;
 }
 
 .table-link {
@@ -2725,6 +2875,11 @@ button {
   border-color: #d1e5db;
 }
 
+.card-income {
+  background: #eaf7f0;
+  border-color: #c8e2d5;
+}
+
 .breakdown-head {
   display: flex;
   justify-content: space-between;
@@ -2752,10 +2907,11 @@ button {
   .home-topbar-nav {
     margin-left: 12px;
   }
-  .home-nav-links {
-    display: none;
-  }
   .quick-bill-form {
+    grid-template-columns: 1fr;
+  }
+
+  .allocation-overview-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -3423,6 +3579,61 @@ button {
   cursor: pointer;
 }
 
+/* ==================== ACTUAL INCOME POSTING ==================== */
+.actual-income-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(220px, 0.8fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.actual-income-card,
+.actual-income-summary-card {
+  background: #f7f9f3;
+  border: 1px solid #d6e0ce;
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+
+.actual-income-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.actual-income-note-field {
+  grid-column: 1 / -1;
+}
+
+.actual-income-summary-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  background: #eaf7f0;
+  border-color: #c8e2d5;
+}
+
+.actual-income-summary-card strong {
+  color: #17654f;
+  font: 700 28px 'DM Mono', monospace;
+}
+
+.actual-income-summary-card p {
+  margin: 0;
+  color: #4f675c;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+@media (max-width: 860px) {
+  .actual-income-grid,
+  .actual-income-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ==================== TRANSACTIONS LEDGER ==================== */
 .tx-ledger-section {
   display: flex;
@@ -3581,7 +3792,7 @@ button {
 
 .history-summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   margin-bottom: 20px;
 }
@@ -3613,6 +3824,11 @@ button {
 .history-summary-card.total-card {
   background: #143e35;
   border-color: #143e35;
+}
+
+.history-summary-card.income-card {
+  background: #eaf7f0;
+  border-color: #c8e2d5;
 }
 
 .history-summary-card.total-card span,
@@ -3701,6 +3917,50 @@ button {
   font: 700 18px 'DM Mono', monospace;
 }
 
+.history-allocation-check {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.history-allocation-item {
+  background: #f8faf6;
+  border: 1px solid #dfe7dc;
+  border-radius: 9px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.history-allocation-item.savings-item {
+  background: #fdfbf2;
+  border-color: #f1e7be;
+}
+
+.history-allocation-item.over-target {
+  background: #fdf1ef;
+  border-color: #efc8c0;
+}
+
+.history-allocation-item span {
+  color: #617269;
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.history-allocation-item strong {
+  color: #153e35;
+  font: 700 18px 'DM Mono', monospace;
+}
+
+.history-allocation-item small {
+  color: #6f8076;
+  font-size: 11px;
+}
+
 .history-breakdown-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3784,4 +4044,374 @@ button {
   .history-period-total {
     text-align: left;
   }
+
+  .history-allocation-check {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==================== USER SELECTED DARK MODE ==================== */
+.app-shell.dark-mode {
+  color: #e7eee9;
+  background: linear-gradient(135deg, #0f1715 0%, #16211d 48%, #243124 100%);
+}
+
+.dark-mode .topbar {
+  background: rgba(15, 23, 21, 0.92);
+  border-bottom-color: #33433d;
+}
+
+.dark-mode .brand,
+.dark-mode .brand strong,
+.dark-mode h1,
+.dark-mode h2,
+.dark-mode h3,
+.dark-mode h4,
+.dark-mode .allocation-overview-header h2,
+.dark-mode .allocation-overview-top span,
+.dark-mode .action-card h3,
+.dark-mode .welcome-meta h1,
+.dark-mode .master-table-header h2,
+.dark-mode .feature-modal-header h2,
+.dark-mode .tx-ledger-header h3,
+.dark-mode .history-period-head h3,
+.dark-mode .history-empty-state h3,
+.dark-mode .modal-bill-info strong,
+.dark-mode .bill-title-cell strong,
+.dark-mode .tx-desc-text,
+.dark-mode .history-breakdown-title,
+.dark-mode .history-mini-row strong {
+  color: #f5f1e7;
+}
+
+.dark-mode .nav-link,
+.dark-mode .welcome-subtext,
+.dark-mode .allocation-overview-header p,
+.dark-mode .allocation-overview-card p,
+.dark-mode .action-hub-header p,
+.dark-mode .action-card p,
+.dark-mode .master-table-header p,
+.dark-mode .feature-modal-header p,
+.dark-mode .tx-ledger-header p,
+.dark-mode .history-empty-state p,
+.dark-mode .breakdown-card p,
+.dark-mode .actual-income-summary-card p,
+.dark-mode .split-subtotal,
+.dark-mode .history-period-count,
+.dark-mode .history-allocation-item span,
+.dark-mode .history-allocation-item small,
+.dark-mode .history-mini-row span,
+.dark-mode .history-muted-row,
+.dark-mode .text-muted-amount,
+.dark-mode .text-muted-dash,
+.dark-mode .no-link-badge {
+  color: #aebdb5;
+}
+
+.dark-mode .nav-link:hover {
+  color: #f5f1e7;
+}
+
+.dark-mode .action-card-footer {
+  color: #9fe0c9;
+}
+
+.dark-mode .action-card:hover .action-card-footer {
+  color: #d8ea5b;
+}
+
+.dark-mode .theme-toggle-btn,
+.dark-mode .btn-ghost,
+.dark-mode .btn-ghost-sm,
+.dark-mode .back-to-home-link,
+.dark-mode .btn-edit-row,
+.dark-mode .btn-cancel-row,
+.dark-mode .btn-cancel-tx,
+.dark-mode .btn-edit-financials-link {
+  background: #1a2925;
+  border-color: #41544d;
+  color: #e8efe8;
+}
+
+.dark-mode .theme-toggle-btn:hover,
+.dark-mode .btn-ghost:hover,
+.dark-mode .btn-ghost-sm:hover,
+.dark-mode .back-to-home-link:hover,
+.dark-mode .btn-edit-row:hover {
+  background: #243630;
+  border-color: #5d756c;
+}
+
+.dark-mode .btn-gold,
+.dark-mode .btn-pay-link,
+.dark-mode .btn-save-row,
+.dark-mode .btn-add-tx {
+  background: #d8ea5b;
+  color: #10231f;
+  box-shadow: 0 8px 24px rgba(216, 234, 91, 0.12);
+}
+
+.dark-mode .btn-gold:hover,
+.dark-mode .btn-pay-link:hover,
+.dark-mode .btn-save-row:hover,
+.dark-mode .btn-add-tx:hover {
+  background: #c5d957;
+}
+
+.dark-mode .topbar,
+.dark-mode .stat-card,
+.dark-mode .allocation-overview-section,
+.dark-mode .allocation-overview-card,
+.dark-mode .action-card,
+.dark-mode .master-records-section,
+.dark-mode .table-wrapper,
+.dark-mode .quick-add-footer,
+.dark-mode .feature-action-modal,
+.dark-mode .pay-bills-section-card,
+.dark-mode .add-tx-card,
+.dark-mode .actual-income-card,
+.dark-mode .actual-income-summary-card,
+.dark-mode .tx-filter-wrap,
+.dark-mode .history-summary-card,
+.dark-mode .history-period-card,
+.dark-mode .history-allocation-item,
+.dark-mode .history-breakdown-panel,
+.dark-mode .history-mini-row,
+.dark-mode .history-empty-state,
+.dark-mode .envelope-card,
+.dark-mode .breakdown-card,
+.dark-mode .auth-modal,
+.dark-mode .category-card-item,
+.dark-mode .quick-add-category-bar,
+.dark-mode .modal-bill-item,
+.dark-mode .reconciliation-tip-box {
+  background: #17231f;
+  border-color: #34453f;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.26);
+}
+
+.dark-mode .stat-gold,
+.dark-mode .card-gold,
+.dark-mode .breakdown-card.card-gold,
+.dark-mode .history-summary-card.income-card,
+.dark-mode .history-allocation-item.savings-item,
+.dark-mode .actual-income-summary-card,
+.dark-mode .card-income {
+  background: #1c3129;
+  border-color: #3d6658;
+}
+
+.dark-mode .stat-cushion,
+.dark-mode .allocation-overview-card,
+.dark-mode .card-living,
+.dark-mode .envelope-card,
+.dark-mode .quick-add-footer,
+.dark-mode .add-tx-card,
+.dark-mode .actual-income-card {
+  background: #1b2823;
+}
+
+.dark-mode .history-summary-card.total-card {
+  background: #d8ea5b;
+  border-color: #d8ea5b;
+}
+
+.dark-mode .history-summary-card.total-card span,
+.dark-mode .history-summary-card.total-card strong {
+  color: #10231f;
+}
+
+.dark-mode .master-data-table th,
+.dark-mode .split-pay-table th,
+.dark-mode .expense-matrix-table th,
+.dark-mode .tx-summary-foot td,
+.dark-mode .matrix-summary-row td {
+  background: #20302a;
+  color: #bac8c1;
+  border-color: #384942;
+}
+
+.dark-mode .master-data-table td,
+.dark-mode .split-pay-table td,
+.dark-mode .expense-matrix-table td,
+.dark-mode .history-period-head,
+.dark-mode .master-table-header,
+.dark-mode .feature-modal-header,
+.dark-mode .split-section-head {
+  border-color: #31423b;
+  color: #dce6df;
+}
+
+.dark-mode .master-data-table tr:hover:not(.editing-row),
+.dark-mode .split-pay-table tr:hover,
+.dark-mode .expense-matrix-table tr:hover,
+.dark-mode .auto-row {
+  background: #1d2a26;
+}
+
+.dark-mode .paid-row {
+  background: #203026 !important;
+}
+
+.dark-mode input,
+.dark-mode select,
+.dark-mode .table-input,
+.dark-mode .table-select,
+.dark-mode .conf-code-input,
+.dark-mode .matrix-date-input,
+.dark-mode .matrix-desc-input,
+.dark-mode .quick-bill-form input,
+.dark-mode .quick-bill-form select,
+.dark-mode .tx-form-field input,
+.dark-mode .tx-form-field select,
+.dark-mode .add-expense-line-form > input[type="date"],
+.dark-mode .add-expense-line-form > input[type="text"] {
+  background: #0f1916;
+  border-color: #42564e;
+  color: #eef5ee;
+}
+
+.dark-mode input::placeholder,
+.dark-mode .conf-code-input::placeholder {
+  color: #71837b;
+}
+
+.dark-mode .actual-amt-input-wrap,
+.dark-mode .tx-amt-wrap,
+.dark-mode .matrix-amt-wrap,
+.dark-mode .mini-input-wrap,
+.dark-mode .table-amount-wrap,
+.dark-mode .input-wrap,
+.dark-mode .actual-amt-readonly,
+.dark-mode .conf-code-readonly {
+  background: #0f1916;
+  border-color: #42564e;
+  color: #eef5ee;
+}
+
+.dark-mode .stat-val,
+.dark-mode .allocation-overview-top strong,
+.dark-mode .table-amount-badge,
+.dark-mode .split-subtotal strong,
+.dark-mode .breakdown-head strong,
+.dark-mode .tx-amount-text,
+.dark-mode .tx-grand-total,
+.dark-mode .history-summary-card strong,
+.dark-mode .history-period-total strong,
+.dark-mode .history-allocation-item strong,
+.dark-mode .history-breakdown-title strong,
+.dark-mode .actual-income-summary-card strong,
+.dark-mode .matrix-grand-total,
+.dark-mode .matrix-row-total {
+  color: #eef5ee;
+}
+
+.dark-mode .text-gold,
+.dark-mode .home-eyebrow,
+.dark-mode .table-eyebrow {
+  color: #d8ea5b;
+}
+
+.dark-mode .text-bills,
+.dark-mode .btn-delete-row,
+.dark-mode .text-over-budget {
+  color: #ffb0a1;
+}
+
+.dark-mode .text-cushion,
+.dark-mode .text-good-budget,
+.dark-mode .envelope-spent {
+  color: #9bd888;
+}
+
+.dark-mode .table-due-badge,
+.dark-mode .tx-date-badge,
+.dark-mode .action-step-badge,
+.dark-mode .status-pill,
+.dark-mode .tx-cat-pill,
+.dark-mode .category-chip,
+.dark-mode .split-pill,
+.dark-mode .add-tx-badge,
+.dark-mode .user-badge,
+.dark-mode .history-scope-control {
+  background: #24342f;
+  border-color: #3d534b;
+  color: #dce8df;
+}
+
+.dark-mode .allocation-meter {
+  background: #0f1916;
+}
+
+.dark-mode .history-scope-control button {
+  color: #aebdb5;
+}
+
+.dark-mode .history-scope-control button.active {
+  background: #d8ea5b;
+  color: #10231f;
+}
+
+.dark-mode .pill-autopay,
+.dark-mode .pill-expense,
+.dark-mode .pill-upcoming,
+.dark-mode .bar-good {
+  background: #24442d;
+  color: #a6e68f;
+  border-color: #3c6d45;
+}
+
+.dark-mode .pill-urgent,
+.dark-mode .pill-debt,
+.dark-mode .card-bills,
+.dark-mode .urgent-card {
+  background: #39231f;
+  border-color: #724237;
+}
+
+.dark-mode .action-icon-box,
+.dark-mode .table-bill-icon,
+.dark-mode .icon-income-bg,
+.dark-mode .brand-mark {
+  box-shadow: none;
+}
+
+.dark-mode .modal-backdrop {
+  background: rgba(3, 8, 7, 0.76);
+}
+
+.dark-mode .babylon-card-header h3,
+.dark-mode .features-section .section-head h2,
+.dark-mode .feature-box h3 {
+  color: #133932;
+}
+
+.dark-mode .babylon-card .allocator-prompt,
+.dark-mode .babylon-card .slider-label,
+.dark-mode .babylon-card .alloc-item small,
+.dark-mode .features-section .section-desc,
+.dark-mode .feature-box p {
+  color: #4b5f55;
+}
+
+.dark-mode .babylon-card .slider-label strong,
+.dark-mode .babylon-card .alloc-meta strong,
+.dark-mode .babylon-card .alloc-val {
+  color: #12372f;
+}
+
+.dark-mode .cure-card h3 {
+  color: #133932;
+}
+
+.dark-mode .cure-ancient {
+  color: #5f7168;
+}
+
+.dark-mode .cure-modern {
+  color: #2f493f;
+}
+
+.dark-mode .cure-divider {
+  background: #e0e8dc;
 }
