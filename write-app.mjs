@@ -1,0 +1,2094 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const targetPath = path.join(__dirname, 'src', 'App.tsx');
+
+const content = `import { FormEvent, useState } from 'react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  BriefcaseBusiness,
+  CalendarDays,
+  CheckCircle2,
+  ChevronRight,
+  CircleDollarSign,
+  Coins,
+  CreditCard,
+  ExternalLink,
+  Flame,
+  Globe,
+  Landmark,
+  Lock,
+  Mail,
+  Pencil,
+  PieChart,
+  Plus,
+  Receipt,
+  Scale,
+  ShieldCheck,
+  Sparkles,
+  Tag,
+  Trash2,
+  TrendingUp,
+  User,
+  Wallet,
+  X,
+  Save,
+} from 'lucide-react'
+import {
+  type Bill,
+  type BudgetProfile,
+  type IncomeSource,
+  type IncomeType,
+  type PayFrequency,
+  type PaymentMethod,
+  type UserAccount,
+  getCurrentUser,
+  loadBudgetProfile,
+  loadBudgetProfileAsync,
+  loginUserAsync,
+  logoutUser,
+  saveBudgetProfileAsync,
+  signupUserAsync,
+} from './budgetProfile'
+
+const frequencies: { value: PayFrequency; label: string; detail: string }[] = [
+  { value: 'weekly', label: 'Weekly', detail: '52 paychecks' },
+  { value: 'biweekly', label: 'Every 2 weeks', detail: '26 paychecks' },
+  { value: 'semimonthly', label: 'Twice a month', detail: '24 paychecks' },
+  { value: 'monthly', label: 'Monthly', detail: '12 paychecks' },
+]
+
+const starterCategories = ['Housing', 'Food & dining', 'Transportation', 'Savings & Investments', 'Utilities']
+const dueDays = Array.from({ length: 31 }, (_, index) => index + 1)
+const setupSteps = ['Income', 'Bills', 'Expenses']
+
+const babylonCures = [
+  {
+    cure: 'Cure I',
+    title: 'Start Thy Purse to Fattening',
+    ancient: 'For every ten coins thou puttest in, take out but nine.',
+    modern: 'Pay yourself first. Keep a minimum of 10% of every paycheck before any bills or living costs are touched.',
+    icon: Coins,
+  },
+  {
+    cure: 'Cure II',
+    title: 'Control Thy Expenditures',
+    ancient: 'Confuse not necessary expenses with thy desires.',
+    modern: 'Clearly distinguish non-negotiable living needs from lifestyle wants. Live below your means with intention.',
+    icon: Scale,
+  },
+  {
+    cure: 'Cure III',
+    title: 'Make Thy Gold Multiply',
+    ancient: 'The gold we retain from our earnings is but the start. The earnings it will make shall build our fortunes.',
+    modern: 'Put your saved capital to work through compounding investments, creating passive streams of continuous income.',
+    icon: TrendingUp,
+  },
+  {
+    cure: 'Cure IV',
+    title: 'Guard Thy Treasures from Loss',
+    ancient: 'Guard thy treasure from loss by investing only where thy principal is safe.',
+    modern: 'Build an emergency buffer and protect capital from speculative risks and hidden subscription leaks.',
+    icon: ShieldCheck,
+  },
+  {
+    cure: 'Cure V',
+    title: 'Make of Thy Dwelling a Profitable Investment',
+    ancient: 'Own thy home so that thy heart may be filled with pride and confidence.',
+    modern: 'Treat housing and fixed recurring overhead as calculated investments rather than unexamined drains.',
+    icon: Landmark,
+  },
+  {
+    cure: 'Cure VI',
+    title: 'Insure a Future Income',
+    ancient: 'Provide in advance for the days of thy growing age and the protection of thy family.',
+    modern: 'Forecast future cash flows and retirement readiness with structured pay-period budget schedules.',
+    icon: PieChart,
+  },
+  {
+    cure: 'Cure VII',
+    title: 'Increase Thy Ability to Earn',
+    ancient: 'Cultivate thy powers, study to become wiser, acquire skill, and act with self-respect.',
+    modern: 'Track your financial discipline continuously, building the habits and clarity that multiply your earning power.',
+    icon: Flame,
+  },
+]
+
+export default function App() {
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => getCurrentUser())
+  const [view, setView] = useState<'landing' | 'setup' | 'home'>('landing')
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup')
+  const [authEmail, setAuthEmail] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [authName, setAuthName] = useState('')
+  const [authError, setAuthError] = useState<string | null>(null)
+
+  // Interactive Babylon Allocator on Landing Page
+  const [sampleMonthlyIncome, setSampleMonthlyIncome] = useState(5000)
+
+  // Financials Setup State
+  const initialProfile = loadBudgetProfile(currentUser?.id)
+  const [categories, setCategories] = useState<string[]>(initialProfile?.categories ?? starterCategories)
+  const [bills, setBills] = useState<Bill[]>(initialProfile?.bills ?? [])
+  const [incomeSources, setIncomeSources] = useState<IncomeSource[]>(initialProfile?.incomeSources ?? [])
+  const [activeStep, setActiveStep] = useState(0)
+  const [newCategory, setNewCategory] = useState('')
+  const [incomeLabel, setIncomeLabel] = useState('')
+  const [incomeFrequency, setIncomeFrequency] = useState<PayFrequency>('biweekly')
+  const [lastPayDate, setLastPayDate] = useState('')
+  const [incomeType, setIncomeType] = useState<IncomeType>('salary')
+  const [estimatedTakeHome, setEstimatedTakeHome] = useState('')
+  const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null)
+  const [billName, setBillName] = useState('')
+  const [anticipatedBillAmount, setAnticipatedBillAmount] = useState('')
+  const [billDueDay, setBillDueDay] = useState(1)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('manual')
+  const [paymentUrl, setPaymentUrl] = useState('')
+  const [editingBillId, setEditingBillId] = useState<string | null>(null)
+  const [isSaved, setIsSaved] = useState(false)
+
+  // Home view state
+  const [activeTab, setActiveTab] = useState<'bills' | 'expenses' | 'income'>('bills')
+  const [activeFeatureModal, setActiveFeatureModal] = useState<'pay-bills' | 'code-expenses' | 'view-budgets' | null>(null)
+  const [inlineEditingBillId, setInlineEditingBillId] = useState<string | null>(null)
+  const [editBillForm, setEditBillForm] = useState<Bill | null>(null)
+  const [newExpenseName, setNewExpenseName] = useState('')
+
+  async function applyUserProfile(user: UserAccount | null) {
+    const profile = await loadBudgetProfileAsync(user)
+    setCategories(profile?.categories ?? starterCategories)
+    setBills(profile?.bills ?? [])
+    setIncomeSources(profile?.incomeSources ?? [])
+    setIsSaved(false)
+  }
+
+  async function handleAuthSubmit(e: FormEvent) {
+    e.preventDefault()
+    setAuthError(null)
+
+    if (authMode === 'signup') {
+      const res = await signupUserAsync(authName, authEmail, authPassword)
+      if (!res.success) {
+        setAuthError(res.error ?? 'Failed to sign up')
+        return
+      }
+      setCurrentUser(res.user ?? null)
+      await applyUserProfile(res.user ?? null)
+      setAuthModalOpen(false)
+      setView('setup')
+    } else {
+      const res = await loginUserAsync(authEmail, authPassword)
+      if (!res.success) {
+        setAuthError(res.error ?? 'Failed to log in')
+        return
+      }
+      setCurrentUser(res.user ?? null)
+      await applyUserProfile(res.user ?? null)
+      setAuthModalOpen(false)
+      const profile = loadBudgetProfile(res.user?.id)
+      if (profile && (profile.bills.length > 0 || profile.incomeSources.length > 0)) {
+        setView('home')
+      } else {
+        setView('setup')
+      }
+    }
+  }
+
+  function handleLogout() {
+    logoutUser()
+    setCurrentUser(null)
+    applyUserProfile(null)
+    setView('landing')
+  }
+
+  function addCategory(event: FormEvent) {
+    event.preventDefault()
+    const category = newCategory.trim()
+    if (!category || categories.some((item) => item.toLowerCase() === category.toLowerCase())) return
+    const updated = [...categories, category]
+    setCategories(updated)
+    setNewCategory('')
+    if (view === 'home') {
+      saveBudgetProfileAsync({ categories: updated, bills, incomeSources }, currentUser)
+    }
+  }
+
+  function removeCategory(category: string) {
+    const updated = categories.filter((item) => item !== category)
+    setCategories(updated)
+    if (view === 'home') {
+      saveBudgetProfileAsync({ categories: updated, bills, incomeSources }, currentUser)
+    }
+  }
+
+  function addIncome(event: FormEvent) {
+    event.preventDefault()
+    const label = incomeLabel.trim()
+    const takeHome = Number(estimatedTakeHome)
+    if (!label || !lastPayDate || !Number.isFinite(takeHome) || takeHome < 0) return
+
+    const incomeSource: IncomeSource = {
+      id: editingIncomeId ?? crypto.randomUUID(),
+      label,
+      estimatedTakeHome: takeHome,
+      frequency: incomeFrequency,
+      lastPayDate,
+      incomeType,
+    }
+    const updated = editingIncomeId
+      ? incomeSources.map((source) => (source.id === editingIncomeId ? incomeSource : source))
+      : [...incomeSources, incomeSource]
+    setIncomeSources(updated)
+    resetIncomeForm()
+    if (view === 'home') {
+      saveBudgetProfileAsync({ categories, bills, incomeSources: updated }, currentUser)
+    }
+  }
+
+  function removeIncome(incomeId: string) {
+    const updated = incomeSources.filter((source) => source.id !== incomeId)
+    setIncomeSources(updated)
+    if (editingIncomeId === incomeId) resetIncomeForm()
+    if (view === 'home') {
+      saveBudgetProfileAsync({ categories, bills, incomeSources: updated }, currentUser)
+    }
+  }
+
+  function editIncome(source: IncomeSource) {
+    setEditingIncomeId(source.id)
+    setIncomeLabel(source.label)
+    setEstimatedTakeHome(String(source.estimatedTakeHome ?? ''))
+    setIncomeFrequency(source.frequency)
+    setLastPayDate(source.lastPayDate)
+    setIncomeType(source.incomeType)
+  }
+
+  function resetIncomeForm() {
+    setIncomeLabel('')
+    setEstimatedTakeHome('')
+    setIncomeFrequency('biweekly')
+    setLastPayDate('')
+    setIncomeType('salary')
+    setEditingIncomeId(null)
+  }
+
+  function addBill(event: FormEvent) {
+    event.preventDefault()
+    const name = billName.trim()
+    const rawUrl = paymentUrl.trim()
+    const url = rawUrl && !/^https?:\\/\\//i.test(rawUrl) ? \`https://\${rawUrl}\` : rawUrl
+    const anticipatedAmount = Number(anticipatedBillAmount)
+    if (!name || !Number.isFinite(anticipatedAmount) || anticipatedAmount < 0) return
+
+    const bill: Bill = {
+      id: editingBillId ?? crypto.randomUUID(),
+      name,
+      anticipatedAmount,
+      dueDay: billDueDay,
+      paymentMethod,
+      paymentUrl: url,
+    }
+    const updated = editingBillId
+      ? bills.map((currentBill) => (currentBill.id === editingBillId ? bill : currentBill))
+      : [...bills, bill]
+    setBills(updated)
+    resetBillForm()
+    if (view === 'home') {
+      saveBudgetProfileAsync({ categories, bills: updated, incomeSources }, currentUser)
+    }
+  }
+
+  function editBill(bill: Bill) {
+    setEditingBillId(bill.id)
+    setBillName(bill.name)
+    setAnticipatedBillAmount(String(bill.anticipatedAmount ?? ''))
+    setBillDueDay(bill.dueDay)
+    setPaymentMethod(bill.paymentMethod)
+    setPaymentUrl(bill.paymentUrl)
+  }
+
+  function resetBillForm() {
+    setBillName('')
+    setAnticipatedBillAmount('')
+    setBillDueDay(1)
+    setPaymentMethod('manual')
+    setPaymentUrl('')
+    setEditingBillId(null)
+  }
+
+  function removeBill(billId: string) {
+    const updated = bills.filter((bill) => bill.id !== billId)
+    setBills(updated)
+    if (editingBillId === billId) resetBillForm()
+    if (view === 'home') {
+      saveBudgetProfileAsync({ categories, bills: updated, incomeSources }, currentUser)
+    }
+  }
+
+  async function continueToBudget() {
+    const profile: BudgetProfile = { categories, bills, incomeSources }
+    await saveBudgetProfileAsync(profile, currentUser)
+    setIsSaved(true)
+    setView('home')
+  }
+
+  function nextStep() {
+    if (activeStep === setupSteps.length - 1) {
+      continueToBudget()
+      return
+    }
+    setActiveStep((step) => step + 1)
+  }
+
+  function startInlineEditBill(bill: Bill) {
+    setInlineEditingBillId(bill.id)
+    setEditBillForm({ ...bill })
+  }
+
+  function saveInlineEditBill() {
+    if (!editBillForm) return
+    const rawUrl = (editBillForm.paymentUrl || '').trim()
+    const url = rawUrl && !/^https?:\\/\\//i.test(rawUrl) ? \`https://\${rawUrl}\` : rawUrl
+    const updatedBill: Bill = {
+      ...editBillForm,
+      name: editBillForm.name.trim() || 'Untitled Bill',
+      anticipatedAmount: Number(editBillForm.anticipatedAmount) || 0,
+      dueDay: Number(editBillForm.dueDay) || 1,
+      paymentUrl: url,
+    }
+    const updated = bills.map((b) => (b.id === updatedBill.id ? updatedBill : b))
+    setBills(updated)
+    setInlineEditingBillId(null)
+    setEditBillForm(null)
+    saveBudgetProfileAsync({ categories, bills: updated, incomeSources }, currentUser)
+  }
+
+  function cancelInlineEditBill() {
+    setInlineEditingBillId(null)
+    setEditBillForm(null)
+  }
+
+  const totalMonthlyBills = bills.reduce((sum, b) => sum + (Number(b.anticipatedAmount) || 0), 0)
+  const totalMonthlyIncomeEst = incomeSources.reduce((sum, inc) => {
+    const amt = Number(inc.estimatedTakeHome) || 0
+    switch (inc.frequency) {
+      case 'weekly':
+        return sum + (amt * 52) / 12
+      case 'biweekly':
+        return sum + (amt * 26) / 12
+      case 'semimonthly':
+        return sum + amt * 2
+      case 'monthly':
+        return sum + amt
+      default:
+        return sum + amt
+    }
+  }, 0)
+  const goldVaultTarget = totalMonthlyIncomeEst * 0.1
+  const freeCashFlow = Math.max(0, totalMonthlyIncomeEst - totalMonthlyBills - goldVaultTarget)
+
+  const goldKeep = sampleMonthlyIncome * 0.1
+  const debtsFuture = sampleMonthlyIncome * 0.2
+  const livingExp = sampleMonthlyIncome * 0.7
+
+  return (
+    <div className="app-shell">
+      {/* GLOBAL TOPBAR */}
+      <header className="topbar" aria-label="Main navigation">
+        <button
+          type="button"
+          className="brand brand-btn"
+          onClick={() => setView('landing')}
+          aria-label="Babylon Budget home"
+        >
+          <span className="brand-mark">
+            <CircleDollarSign size={22} strokeWidth={2.3} />
+          </span>
+          <span>
+            Babylon <strong>Budget</strong>
+          </span>
+        </button>
+
+        {view === 'landing' ? (
+          <nav className="nav-links">
+            <a href="#philosophy" className="nav-link">
+              Philosophy
+            </a>
+            <a href="#cures" className="nav-link">
+              The 7 Cures
+            </a>
+            <a href="#features" className="nav-link">
+              Features
+            </a>
+            <div className="nav-actions">
+              {currentUser ? (
+                <>
+                  <div className="user-badge" title={\`Signed in as \${currentUser.email}\`}>
+                    <User size={15} />
+                    <span>{currentUser.name}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-gold"
+                    onClick={() => setView('home')}
+                  >
+                    Go to Home
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={handleLogout}
+                  >
+                    Log Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => {
+                      setAuthError(null)
+                      setAuthMode('login')
+                      setAuthModalOpen(true)
+                    }}
+                  >
+                    Log In
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-gold"
+                    onClick={() => {
+                      setAuthError(null)
+                      setAuthMode('signup')
+                      setAuthModalOpen(true)
+                    }}
+                  >
+                    Sign Up Free
+                  </button>
+                </>
+              )}
+            </div>
+          </nav>
+        ) : view === 'setup' ? (
+          <div className="setup-nav-status">
+            <button
+              type="button"
+              className="back-to-home-link"
+              onClick={() => setView('landing')}
+            >
+              <ArrowLeft size={16} /> Landing
+            </button>
+            {bills.length > 0 && (
+              <button
+                type="button"
+                className="back-to-home-link"
+                onClick={() => setView('home')}
+              >
+                Go to Home
+              </button>
+            )}
+            {currentUser && (
+              <div className="user-badge" title={\`Signed in as \${currentUser.email}\`}>
+                <User size={14} />
+                <span>{currentUser.name}</span>
+              </div>
+            )}
+            <span className="step-label">
+              Financials Setup <span>{activeStep + 1} of 3</span>
+            </span>
+          </div>
+        ) : (
+          /* HOME VIEW TOPBAR */
+          <div className="home-topbar-nav">
+            <div className="home-nav-links">
+              <button
+                type="button"
+                className="btn-ghost-sm"
+                onClick={() => {
+                  setActiveStep(0)
+                  setView('setup')
+                }}
+              >
+                Edit Financials Setup
+              </button>
+              <button
+                type="button"
+                className="btn-ghost-sm"
+                onClick={() => setView('landing')}
+              >
+                Landing Page
+              </button>
+            </div>
+            <div className="nav-actions">
+              {currentUser && (
+                <div className="user-badge" title={\`Signed in as \${currentUser.email}\`}>
+                  <User size={14} />
+                  <span>{currentUser.name}</span>
+                </div>
+              )}
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={handleLogout}
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+        )}
+      </header>
+
+      {/* ======================= LANDING PAGE VIEW ======================= */}
+      {view === 'landing' && (
+        <main className="landing-container">
+          <section className="hero-section">
+            <div className="hero-content">
+              <div className="hero-badge">
+                <Sparkles size={14} />
+                <span>Inspired by George S. Clason&apos;s Classic</span>
+              </div>
+              <h1 className="hero-title">
+                Build Enduring Wealth.
+                <br />
+                <span className="hero-gold-text">Master Your Gold</span> Paycheck by Paycheck.
+              </h1>
+              <p className="hero-subtitle">
+                Designed to help you track your spending, budget with confidence, and build a prosperous future.
+                Rooted in the timeless wisdom of <em>The Richest Man in Babylon</em>: &ldquo;A part of all you earn is yours to keep.&rdquo;
+              </p>
+              <div className="hero-cta-group">
+                <button
+                  type="button"
+                  className="btn-gold-large"
+                  onClick={() => {
+                    if (bills.length > 0 || incomeSources.length > 0) {
+                      setView('home')
+                    } else {
+                      setView('setup')
+                    }
+                  }}
+                >
+                  {bills.length > 0 ? 'Open Your Babylon Home' : 'Start Financials Setup'} <ChevronRight size={18} />
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary-large"
+                  onClick={() => {
+                    const el = document.getElementById('cures')
+                    el?.scrollIntoView({ behavior: 'smooth' })
+                  }}
+                >
+                  Explore the 7 Cures
+                </button>
+              </div>
+
+              <div className="hero-trust-bar">
+                <div className="trust-item">
+                  <CheckCircle2 size={16} /> 100% Private &amp; Offline-Ready
+                </div>
+                <div className="trust-item">
+                  <CheckCircle2 size={16} /> Paycheck-Aligned Rhythm
+                </div>
+                <div className="trust-item">
+                  <CheckCircle2 size={16} /> No Hidden Fees
+                </div>
+              </div>
+            </div>
+
+            <div className="hero-visual">
+              <div className="babylon-card">
+                <div className="babylon-card-header">
+                  <div>
+                    <span className="card-eyebrow">THE BABYLONIAN WEALTH LAW</span>
+                    <h3>The 10 / 20 / 70 Principle</h3>
+                  </div>
+                  <span className="gold-seal">7 Cures</span>
+                </div>
+
+                <p className="allocator-prompt">
+                  See how your monthly income is partitioned under Babylon law:
+                </p>
+
+                <div className="income-slider-group">
+                  <div className="slider-label">
+                    <span>Monthly Earnings</span>
+                    <strong>{formatCurrency(sampleMonthlyIncome)}</strong>
+                  </div>
+                  <input
+                    type="range"
+                    min="1500"
+                    max="20000"
+                    step="250"
+                    value={sampleMonthlyIncome}
+                    onChange={(e) => setSampleMonthlyIncome(Number(e.target.value))}
+                    aria-label="Monthly income slider"
+                  />
+                </div>
+
+                <div className="allocation-bars">
+                  <div className="alloc-item alloc-gold">
+                    <div className="alloc-head">
+                      <div className="alloc-meta">
+                        <span className="alloc-badge">10%</span>
+                        <strong>Thy Gold Vault (Yours to Keep)</strong>
+                      </div>
+                      <span className="alloc-val">{formatCurrency(goldKeep)}</span>
+                    </div>
+                    <div className="alloc-progress-track">
+                      <div className="alloc-bar alloc-bar-gold" style={{ width: '10%' }} />
+                    </div>
+                    <small>Untouchable foundation wealth. Paid first before any creditor.</small>
+                  </div>
+
+                  <div className="alloc-item alloc-sage">
+                    <div className="alloc-head">
+                      <div className="alloc-meta">
+                        <span className="alloc-badge">20%</span>
+                        <strong>Debts &amp; Future Multipliers</strong>
+                      </div>
+                      <span className="alloc-val">{formatCurrency(debtsFuture)}</span>
+                    </div>
+                    <div className="alloc-progress-track">
+                      <div className="alloc-bar alloc-bar-sage" style={{ width: '20%' }} />
+                    </div>
+                    <small>Systematic debt retirement and compounding growth investments.</small>
+                  </div>
+
+                  <div className="alloc-item alloc-emerald">
+                    <div className="alloc-head">
+                      <div className="alloc-meta">
+                        <span className="alloc-badge">70%</span>
+                        <strong>Living Expenses &amp; Bills</strong>
+                      </div>
+                      <span className="alloc-val">{formatCurrency(livingExp)}</span>
+                    </div>
+                    <div className="alloc-progress-track">
+                      <div className="alloc-bar alloc-bar-emerald" style={{ width: '70%' }} />
+                    </div>
+                    <small>Shelter, nourishment, and obligations managed with disciplined ease.</small>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="card-action-btn"
+                  onClick={() => setView('setup')}
+                >
+                  Configure Your Real Paychecks Now &rarr;
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section id="philosophy" className="quote-banner">
+            <div className="quote-inner">
+              <span className="quote-mark">&ldquo;</span>
+              <blockquote>
+                A part of all you earn is yours to keep. It should be not less than a tenth no matter how little you earn. It can be as much more as you can afford. Pay yourself first.
+              </blockquote>
+              <cite>&mdash; George S. Clason, <em>The Richest Man in Babylon</em></cite>
+            </div>
+          </section>
+
+          <section id="cures" className="cures-section">
+            <div className="section-head text-center">
+              <p className="eyebrow">ANCIENT WISDOM &bull; MODERN DISCIPLINE</p>
+              <h2>The Seven Cures for a Lean Purse</h2>
+              <p className="section-desc">
+                Thousands of years ago in ancient Babylon, the richest city of antiquity, Arkad taught seven master laws for wealth. Babylon Budget translates each law into intuitive software tools.
+              </p>
+            </div>
+
+            <div className="cures-grid">
+              {babylonCures.map((item, idx) => {
+                const Icon = item.icon
+                return (
+                  <div className="cure-card" key={item.cure}>
+                    <div className="cure-header">
+                      <span className="cure-number">0{idx + 1}</span>
+                      <div className="cure-icon-box">
+                        <Icon size={20} />
+                      </div>
+                    </div>
+                    <h3>{item.title}</h3>
+                    <p className="cure-ancient">&ldquo;{item.ancient}&rdquo;</p>
+                    <div className="cure-divider" />
+                    <p className="cure-modern">{item.modern}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+
+          <section id="features" className="features-section">
+            <div className="section-head text-center">
+              <p className="eyebrow">DESIGNED FOR CLARITY</p>
+              <h2>Everything You Need to Command Your Cash Flow</h2>
+              <p className="section-desc">
+                Stop guessing your balance across arbitrary calendar months. Babylon Budget anchors every dollar directly to your real pay schedule.
+              </p>
+            </div>
+
+            <div className="features-grid">
+              <div className="feature-box">
+                <div className="feature-icon"><CalendarDays size={24} /></div>
+                <h3>Paycheck-Matched Cycles</h3>
+                <p>
+                  Whether you are paid weekly, every two weeks, twice a month, or monthly, your budget resets and allocates in rhythm with actual money in hand.
+                </p>
+              </div>
+
+              <div className="feature-box">
+                <div className="feature-icon"><CreditCard size={24} /></div>
+                <h3>Monthly Bills &amp; Payment Links</h3>
+                <p>
+                  Store anticipated bill amounts, due dates, autopay flags, and direct links to payment portals so no due date ever catches you unawares.
+                </p>
+              </div>
+
+              <div className="feature-box">
+                <div className="feature-icon"><Scale size={24} /></div>
+                <h3>Spending Category Guardrails</h3>
+                <p>
+                  Create clean expense envelopes to monitor food, transit, recreation, and home costs without tedious micro-management.
+                </p>
+              </div>
+
+              <div className="feature-box">
+                <div className="feature-icon"><Lock size={24} /></div>
+                <h3>Private by Architecture</h3>
+                <p>
+                  Your financial records belong to you. Work offline with local storage drafts or link to your personal profile when ready.
+                </p>
+              </div>
+
+              <div className="feature-box">
+                <div className="feature-icon"><TrendingUp size={24} /></div>
+                <h3>Future Income Forecasting</h3>
+                <p>
+                  Anticipate surplus cash flow weeks in advance and direct extra capital toward debt payoff or compounding wealth reserves.
+                </p>
+              </div>
+
+              <div className="feature-box">
+                <div className="feature-icon"><Globe size={24} /></div>
+                <h3>Zero Hassle Web Access</h3>
+                <p>
+                  Open directly as a self-contained web page on any desktop, tablet, or phone without app store barricades.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="cta-banner">
+            <div className="cta-banner-card">
+              <span className="eyebrow eyebrow-gold">YOUR JOURNEY BEGINS TODAY</span>
+              <h2>Ready to make your purse fatten with gold?</h2>
+              <p>
+                Take the first step toward lasting financial peace of mind. Complete your Financials Setup in less than 3 minutes.
+              </p>
+              <div className="cta-btn-row">
+                <button
+                  type="button"
+                  className="btn-gold-large"
+                  onClick={() => setView('setup')}
+                >
+                  Start Financials Setup Now <ArrowRight size={18} />
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost-light"
+                  onClick={() => {
+                    setAuthMode('signup')
+                    setAuthModalOpen(true)
+                  }}
+                >
+                  Create Free Account
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <footer className="landing-footer">
+            <div className="footer-content">
+              <div className="footer-brand">
+                <div className="brand">
+                  <span className="brand-mark"><CircleDollarSign size={20} /></span>
+                  <span>Babylon <strong>Budget</strong></span>
+                </div>
+                <p>
+                  Ancient financial discipline crafted for modern lives. Inspired by George S. Clason&apos;s timeless principles.
+                </p>
+              </div>
+              <div className="footer-links">
+                <strong>Navigation</strong>
+                <button type="button" onClick={() => setView('setup')}>Financials Setup</button>
+                <a href="#philosophy">The Babylon Law</a>
+                <a href="#cures">The 7 Cures</a>
+                <a href="#features">Features</a>
+              </div>
+              <div className="footer-links">
+                <strong>Account</strong>
+                <button type="button" onClick={() => { setAuthMode('login'); setAuthModalOpen(true); }}>Log In</button>
+                <button type="button" onClick={() => { setAuthMode('signup'); setAuthModalOpen(true); }}>Sign Up</button>
+                <button type="button" onClick={() => setView('setup')}>Guest Setup</button>
+              </div>
+            </div>
+            <div className="footer-bottom">
+              <p>&copy; {new Date().getFullYear()} Babylon Budget. Built with timeless principles for a secure financial future.</p>
+            </div>
+          </footer>
+        </main>
+      )}
+
+      {/* ==================== FINANCIALS SETUP VIEW ==================== */}
+      {view === 'setup' && (
+        <main className="setup-wrapper">
+          <section className="setup-layout" aria-label="Financials Setup">
+            <div className="form-panel">
+              <div className="setup-progress" aria-label="Setup progress">
+                {setupSteps.map((step, index) => (
+                  <button
+                    className={index === activeStep ? 'active' : index < activeStep ? 'complete' : ''}
+                    type="button"
+                    onClick={() => setActiveStep(index)}
+                    aria-current={index === activeStep ? 'step' : undefined}
+                    key={step}
+                  >
+                    {index + 1}
+                    <small>{step}</small>
+                  </button>
+                ))}
+              </div>
+
+              {activeStep === 0 && (
+                <>
+                  <div className="form-heading">
+                    <p className="eyebrow">STEP 1 OF 3 &bull; FINANCIALS SETUP</p>
+                    <h2>Add your income sources</h2>
+                    <p>
+                      &ldquo;Start thy purse to fattening.&rdquo; Record each salary or hourly source so your cash flow matches real paydays.
+                    </p>
+                  </div>
+                  <div className="field-group income-section">
+                    <div className="field-header">
+                      <label>Income sources</label>
+                      <span>{incomeSources.length} added</span>
+                    </div>
+                    {incomeSources.length > 0 && (
+                      <div className="income-list" aria-label="Your income sources">
+                        {incomeSources.map((source) => (
+                          <div className="income-row" key={source.id}>
+                            <span className="income-icon">
+                              <BriefcaseBusiness size={16} />
+                            </span>
+                            <span className="income-details">
+                              <strong>
+                                {source.label}
+                                <em>{formatCurrency(source.estimatedTakeHome)}</em>
+                              </strong>
+                              <small>
+                                {frequencyLabel(source.frequency)} &bull; Last paid {formatDate(source.lastPayDate)} &bull;{' '}
+                                {source.incomeType === 'hourly' ? 'Hourly' : 'Salary'}
+                              </small>
+                            </span>
+                            <button
+                              className="icon-button"
+                              type="button"
+                              onClick={() => editIncome(source)}
+                              aria-label={\`Edit \${source.label}\`}
+                              title={\`Edit \${source.label}\`}
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button
+                              className="icon-button"
+                              type="button"
+                              onClick={() => removeIncome(source.id)}
+                              aria-label={\`Remove \${source.label}\`}
+                              title={\`Remove \${source.label}\`}
+                            >
+                              <Trash2 size={17} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <form className="income-form" onSubmit={addIncome}>
+                      <input
+                        value={incomeLabel}
+                        onChange={(event) => setIncomeLabel(event.target.value)}
+                        placeholder="Income label, e.g. Main job"
+                        aria-label="Income label"
+                        required
+                      />
+                      <label className="take-home-field">
+                        <span>Estimated take-home</span>
+                        <input
+                          value={estimatedTakeHome}
+                          onChange={(event) => setEstimatedTakeHome(event.target.value)}
+                          placeholder="0.00"
+                          aria-label="Estimated take-home amount"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          inputMode="decimal"
+                          required
+                        />
+                      </label>
+                      <label className="select-field">
+                        <span>Pay frequency</span>
+                        <select
+                          value={incomeFrequency}
+                          onChange={(event) => setIncomeFrequency(event.target.value as PayFrequency)}
+                          aria-label="Income pay frequency"
+                        >
+                          {frequencies.map((frequency) => (
+                            <option key={frequency.value} value={frequency.value}>
+                              {frequency.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="date-field">
+                        <CalendarDays size={15} />
+                        <span>Last pay date</span>
+                        <input
+                          type="date"
+                          value={lastPayDate}
+                          onChange={(event) => setLastPayDate(event.target.value)}
+                          aria-label="Last pay date"
+                          required
+                        />
+                      </label>
+                      <fieldset className="income-type">
+                        <legend>Income type</legend>
+                        <label>
+                          <input
+                            type="radio"
+                            name="income-type"
+                            checked={incomeType === 'hourly'}
+                            onChange={() => setIncomeType('hourly')}
+                          />{' '}
+                          Hourly
+                        </label>
+                        <label>
+                          <input
+                            type="radio"
+                            name="income-type"
+                            checked={incomeType === 'salary'}
+                            onChange={() => setIncomeType('salary')}
+                          />{' '}
+                          Salary
+                        </label>
+                      </fieldset>
+                      <button className="add-income-button" type="submit">
+                        {editingIncomeId ? <Pencil size={17} /> : <Plus size={18} />}
+                        {editingIncomeId ? 'Save changes' : 'Add income'}
+                      </button>
+                      {editingIncomeId && (
+                        <button className="cancel-edit-button" type="button" onClick={resetIncomeForm}>
+                          Cancel edit
+                        </button>
+                      )}
+                    </form>
+                  </div>
+                </>
+              )}
+
+              {activeStep === 1 && (
+                <>
+                  <div className="form-heading">
+                    <p className="eyebrow">STEP 2 OF 3 &bull; FINANCIALS SETUP</p>
+                    <h2>Add your recurring monthly bills</h2>
+                    <p>
+                      &ldquo;Control thy expenditures.&rdquo; Map due dates and quick payment links so you never pay late fees.
+                    </p>
+                  </div>
+                  <div className="field-group bills-section">
+                    <div className="field-header">
+                      <label>Your monthly bills</label>
+                      <span>{bills.length} added</span>
+                    </div>
+                    {bills.length > 0 && (
+                      <div className="bill-list" aria-label="Your monthly bills">
+                        {bills.map((bill) => (
+                          <div className="bill-row" key={bill.id}>
+                            <span className="bill-icon" aria-hidden="true">
+                              <CreditCard size={16} />
+                            </span>
+                            <span className="bill-details">
+                              <strong>
+                                {bill.name}
+                                <em>{formatCurrency(bill.anticipatedAmount)}</em>
+                              </strong>
+                              <small>
+                                Due the {bill.dueDay}
+                                {ordinalSuffix(bill.dueDay)} &bull;{' '}
+                                {bill.paymentMethod === 'autopay' ? 'Autopay' : 'Manual pay'}
+                              </small>
+                            </span>
+                            {bill.paymentUrl && (
+                              <a
+                                className="payment-link"
+                                href={bill.paymentUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                aria-label={\`Open \${bill.name} payment website\`}
+                                title={\`Open \${bill.name} payment website\`}
+                              >
+                                <ExternalLink size={16} />
+                              </a>
+                            )}
+                            <button
+                              className="icon-button"
+                              type="button"
+                              onClick={() => editBill(bill)}
+                              aria-label={\`Edit \${bill.name}\`}
+                              title={\`Edit \${bill.name}\`}
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button
+                              className="icon-button"
+                              type="button"
+                              onClick={() => removeBill(bill.id)}
+                              aria-label={\`Remove \${bill.name}\`}
+                              title={\`Remove \${bill.name}\`}
+                            >
+                              <Trash2 size={17} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <form className="bill-form" onSubmit={addBill}>
+                      <input
+                        value={billName}
+                        onChange={(event) => setBillName(event.target.value)}
+                        placeholder="Bill name, e.g. Rent / Mortgage"
+                        aria-label="Bill name"
+                        required
+                      />
+                      <label className="bill-amount-field">
+                        <span>Anticipated amount</span>
+                        <input
+                          value={anticipatedBillAmount}
+                          onChange={(event) => setAnticipatedBillAmount(event.target.value)}
+                          placeholder="0.00"
+                          aria-label="Anticipated bill amount"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          inputMode="decimal"
+                          required
+                        />
+                      </label>
+                      <input
+                        value={paymentUrl}
+                        onChange={(event) => setPaymentUrl(event.target.value)}
+                        placeholder="Payment website URL (optional)"
+                        aria-label="Payment website URL (optional)"
+                      />
+                      <label className="compact-field">
+                        <CalendarDays size={15} />
+                        <span>Due day</span>
+                        <select
+                          value={billDueDay}
+                          onChange={(event) => setBillDueDay(Number(event.target.value))}
+                          aria-label="Monthly due day"
+                        >
+                          {dueDays.map((day) => (
+                            <option key={day} value={day}>
+                              {day}
+                              {ordinalSuffix(day)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <fieldset className="payment-method">
+                        <legend>Payment method</legend>
+                        <label>
+                          <input
+                            type="radio"
+                            name="payment-method"
+                            checked={paymentMethod === 'autopay'}
+                            onChange={() => setPaymentMethod('autopay')}
+                          />{' '}
+                          Autopay
+                        </label>
+                        <label>
+                          <input
+                            type="radio"
+                            name="payment-method"
+                            checked={paymentMethod === 'manual'}
+                            onChange={() => setPaymentMethod('manual')}
+                          />{' '}
+                          Manual
+                        </label>
+                      </fieldset>
+                      <button className="add-bill-button" type="submit">
+                        {editingBillId ? <Pencil size={17} /> : <Plus size={18} />}
+                        {editingBillId ? 'Save changes' : 'Add bill'}
+                      </button>
+                      {editingBillId && (
+                        <button className="cancel-edit-button" type="button" onClick={resetBillForm}>
+                          Cancel edit
+                        </button>
+                      )}
+                    </form>
+                  </div>
+                </>
+              )}
+
+              {activeStep === 2 && (
+                <>
+                  <div className="form-heading">
+                    <p className="eyebrow">STEP 3 OF 3 &bull; FINANCIALS SETUP</p>
+                    <h2>Choose your expense categories</h2>
+                    <p>
+                      &ldquo;Guard thy treasures from loss.&rdquo; Group your variable spending to maintain total clarity over every coin.
+                    </p>
+                  </div>
+                  <div className="field-group">
+                    <div className="field-header">
+                      <label>Expense categories</label>
+                      <span>{categories.length} selected</span>
+                    </div>
+                    <div className="category-list" aria-label="Selected expense categories">
+                      {categories.map((category) => (
+                        <div className="category-row" key={category}>
+                          <span className="category-dot" aria-hidden="true" />
+                          <span>{category}</span>
+                          <button
+                            className="icon-button"
+                            type="button"
+                            onClick={() => removeCategory(category)}
+                            aria-label={\`Remove \${category}\`}
+                            title={\`Remove \${category}\`}
+                          >
+                            <Trash2 size={17} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <form className="add-category" onSubmit={addCategory}>
+                      <input
+                        value={newCategory}
+                        onChange={(event) => setNewCategory(event.target.value)}
+                        placeholder="Add a category, e.g. Gold Reserve"
+                        aria-label="New expense category"
+                      />
+                      <button type="submit" aria-label="Add category" title="Add category">
+                        <Plus size={19} />
+                      </button>
+                    </form>
+                  </div>
+                </>
+              )}
+
+              <div className="form-footer">
+                <button
+                  className="back-button"
+                  type="button"
+                  onClick={() => setActiveStep((step) => step - 1)}
+                  disabled={activeStep === 0}
+                >
+                  <ArrowLeft size={18} />
+                  Back
+                </button>
+                <p>{isSaved ? 'Your Financials Setup is saved!' : 'You can refine your plan at any time.'}</p>
+                <button
+                  className="continue-button"
+                  type="button"
+                  onClick={nextStep}
+                  disabled={activeStep === 0 && incomeSources.length === 0}
+                >
+                  {activeStep === 2 ? (isSaved ? 'Saved' : 'Finish setup & Go to Home') : 'Continue'}
+                  <ArrowRight size={18} />
+                </button>
+              </div>
+            </div>
+          </section>
+        </main>
+      )}
+
+      {/* ======================= HOME / DASHBOARD VIEW ======================= */}
+      {view === 'home' && (
+        <main className="home-dashboard">
+          <div className="home-container">
+            {/* WELCOME HERO */}
+            <div className="home-welcome-header">
+              <div className="welcome-meta">
+                <span className="home-eyebrow">COMMAND CENTER</span>
+                <h1>
+                  Welcome, {currentUser?.name || 'Friend of Babylon'}.
+                </h1>
+                <p className="welcome-subtext">
+                  Your financials are configured. Review your high-priority actions or inspect and adjust your master schedule below.
+                </p>
+              </div>
+              <div className="quick-stats-strip">
+                <div className="stat-card">
+                  <span className="stat-label">Est. Monthly Income</span>
+                  <strong className="stat-val">{formatCurrency(totalMonthlyIncomeEst)}</strong>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-label">Monthly Bills</span>
+                  <strong className="stat-val text-bills">{formatCurrency(totalMonthlyBills)}</strong>
+                </div>
+                <div className="stat-card stat-gold">
+                  <span className="stat-label">Gold Vault (10%)</span>
+                  <strong className="stat-val text-gold">{formatCurrency(goldVaultTarget)}</strong>
+                </div>
+                <div className="stat-card stat-cushion">
+                  <span className="stat-label">Free Cash Flow</span>
+                  <strong className="stat-val text-cushion">{formatCurrency(freeCashFlow)}</strong>
+                </div>
+              </div>
+            </div>
+
+            {/* WHAT DO YOU WANT TO DO NOW? SECTION */}
+            <section className="action-hub-section" aria-labelledby="action-hub-title">
+              <div className="action-hub-header">
+                <h2 id="action-hub-title">What do you want to do now?</h2>
+                <p>Choose an action to manage today&apos;s money flow:</p>
+              </div>
+
+              <div className="action-cards-grid">
+                {/* 1. Pay Bills */}
+                <div
+                  className="action-card action-card-bills"
+                  onClick={() => setActiveFeatureModal('pay-bills')}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="action-card-top">
+                    <div className="action-icon-box icon-bills">
+                      <CreditCard size={24} />
+                    </div>
+                    <span className="action-step-badge">Option 1</span>
+                  </div>
+                  <h3>Pay Bills</h3>
+                  <p>
+                    Review upcoming due dates, launch direct payment portals in one click, and mark bills as settled for this cycle.
+                  </p>
+                  <div className="action-card-footer">
+                    <span>Open Pay Portal ({bills.length} bills) &rarr;</span>
+                  </div>
+                </div>
+
+                {/* 2. Code Previous Pay Period Expenses */}
+                <div
+                  className="action-card action-card-expenses"
+                  onClick={() => setActiveFeatureModal('code-expenses')}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="action-card-top">
+                    <div className="action-icon-box icon-expenses">
+                      <Receipt size={24} />
+                    </div>
+                    <span className="action-step-badge">Option 2</span>
+                  </div>
+                  <h3>Code Previous Expenses</h3>
+                  <p>
+                    Tag and categorize your recent pay-period transactions into spending envelopes to ensure no leak in thy purse.
+                  </p>
+                  <div className="action-card-footer">
+                    <span>Reconcile Transactions &rarr;</span>
+                  </div>
+                </div>
+
+                {/* 3. View Budgets */}
+                <div
+                  className="action-card action-card-budgets"
+                  onClick={() => setActiveFeatureModal('view-budgets')}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="action-card-top">
+                    <div className="action-icon-box icon-budgets">
+                      <PieChart size={24} />
+                    </div>
+                    <span className="action-step-badge">Option 3</span>
+                  </div>
+                  <h3>View Budgets</h3>
+                  <p>
+                    Inspect your Babylonian 10/20/70 distribution, monitor pay-period envelopes, and forecast long-term wealth compounding.
+                  </p>
+                  <div className="action-card-footer">
+                    <span>Open Budget Overview &rarr;</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* MASTER BILLS & EXPENSES TABLE SECTION */}
+            <section className="master-records-section">
+              <div className="master-table-header">
+                <div>
+                  <span className="table-eyebrow">FINANCIAL SCHEDULE MANAGEMENT</span>
+                  <h2>Master Bills &amp; Expenses Directory</h2>
+                  <p>
+                    Review and edit future due dates, dollar amounts, payment links, and expense categories whenever necessary. Changes are saved automatically.
+                  </p>
+                </div>
+                <div className="table-tab-switches">
+                  <button
+                    type="button"
+                    className={\`tab-btn \${activeTab === 'bills' ? 'active' : ''}\`}
+                    onClick={() => setActiveTab('bills')}
+                  >
+                    <CreditCard size={15} /> Bills ({bills.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={\`tab-btn \${activeTab === 'expenses' ? 'active' : ''}\`}
+                    onClick={() => setActiveTab('expenses')}
+                  >
+                    <Tag size={15} /> Categories ({categories.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={\`tab-btn \${activeTab === 'income' ? 'active' : ''}\`}
+                    onClick={() => setActiveTab('income')}
+                  >
+                    <Wallet size={15} /> Incomes ({incomeSources.length})
+                  </button>
+                </div>
+              </div>
+
+              {/* BILLS TABLE */}
+              {activeTab === 'bills' && (
+                <div className="table-wrapper">
+                  <table className="master-data-table">
+                    <thead>
+                      <tr>
+                        <th>Bill Name</th>
+                        <th>Anticipated Amount</th>
+                        <th>Due Day</th>
+                        <th>Payment Method</th>
+                        <th>Payment Link</th>
+                        <th style={{ textAlign: 'right' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bills.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="empty-table-cell">
+                            No bills added yet. Use the quick form below or Edit Financials Setup to add your recurring bills.
+                          </td>
+                        </tr>
+                      ) : (
+                        bills.map((bill) => {
+                          const isEditing = inlineEditingBillId === bill.id
+                          return (
+                            <tr key={bill.id} className={isEditing ? 'editing-row' : ''}>
+                              {isEditing && editBillForm ? (
+                                <>
+                                  <td>
+                                    <input
+                                      className="table-input"
+                                      value={editBillForm.name}
+                                      onChange={(e) =>
+                                        setEditBillForm({ ...editBillForm, name: e.target.value })
+                                      }
+                                      placeholder="Bill name"
+                                      required
+                                    />
+                                  </td>
+                                  <td>
+                                    <div className="table-amount-wrap">
+                                      <span>$</span>
+                                      <input
+                                        className="table-input"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={editBillForm.anticipatedAmount}
+                                        onChange={(e) =>
+                                          setEditBillForm({
+                                            ...editBillForm,
+                                            anticipatedAmount: Number(e.target.value),
+                                          })
+                                        }
+                                        required
+                                      />
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <select
+                                      className="table-select"
+                                      value={editBillForm.dueDay}
+                                      onChange={(e) =>
+                                        setEditBillForm({
+                                          ...editBillForm,
+                                          dueDay: Number(e.target.value),
+                                        })
+                                      }
+                                    >
+                                      {dueDays.map((d) => (
+                                        <option key={d} value={d}>
+                                          {d}
+                                          {ordinalSuffix(d)} of month
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  <td>
+                                    <select
+                                      className="table-select"
+                                      value={editBillForm.paymentMethod}
+                                      onChange={(e) =>
+                                        setEditBillForm({
+                                          ...editBillForm,
+                                          paymentMethod: e.target.value as PaymentMethod,
+                                        })
+                                      }
+                                    >
+                                      <option value="autopay">Autopay</option>
+                                      <option value="manual">Manual Pay</option>
+                                    </select>
+                                  </td>
+                                  <td>
+                                    <input
+                                      className="table-input"
+                                      value={editBillForm.paymentUrl || ''}
+                                      onChange={(e) =>
+                                        setEditBillForm({
+                                          ...editBillForm,
+                                          paymentUrl: e.target.value,
+                                        })
+                                      }
+                                      placeholder="https://..."
+                                    />
+                                  </td>
+                                  <td style={{ textAlign: 'right' }}>
+                                    <div className="table-row-actions">
+                                      <button
+                                        type="button"
+                                        className="btn-save-row"
+                                        onClick={saveInlineEditBill}
+                                        title="Save Changes"
+                                      >
+                                        <Save size={15} /> Save
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn-cancel-row"
+                                        onClick={cancelInlineEditBill}
+                                        title="Cancel"
+                                      >
+                                        <X size={15} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  <td>
+                                    <div className="bill-title-cell">
+                                      <span className="table-bill-icon">
+                                        <CreditCard size={15} />
+                                      </span>
+                                      <strong>{bill.name}</strong>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <span className="table-amount-badge">
+                                      {formatCurrency(bill.anticipatedAmount)}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span className="table-due-badge">
+                                      Due {bill.dueDay}
+                                      {ordinalSuffix(bill.dueDay)}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span
+                                      className={\`status-pill \${
+                                        bill.paymentMethod === 'autopay'
+                                          ? 'pill-autopay'
+                                          : 'pill-manual'
+                                      }\`}
+                                    >
+                                      {bill.paymentMethod === 'autopay' ? 'Autopay' : 'Manual'}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    {bill.paymentUrl ? (
+                                      <a
+                                        href={bill.paymentUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="table-link"
+                                        title={bill.paymentUrl}
+                                      >
+                                        <span>Open Portal</span>
+                                        <ExternalLink size={13} />
+                                      </a>
+                                    ) : (
+                                      <span className="text-muted-dash">&mdash;</span>
+                                    )}
+                                  </td>
+                                  <td style={{ textAlign: 'right' }}>
+                                    <div className="table-row-actions">
+                                      <button
+                                        type="button"
+                                        className="btn-edit-row"
+                                        onClick={() => startInlineEditBill(bill)}
+                                        aria-label={\`Edit \${bill.name}\`}
+                                        title="Edit bill details"
+                                      >
+                                        <Pencil size={15} /> Edit
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn-delete-row"
+                                        onClick={() => removeBill(bill.id)}
+                                        aria-label={\`Delete \${bill.name}\`}
+                                        title="Delete bill"
+                                      >
+                                        <Trash2 size={15} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </>
+                              )}
+                            </tr>
+                          )
+                        })
+                      )}
+                    </tbody>
+                  </table>
+
+                  <div className="quick-add-footer">
+                    <h4>Add another bill directly:</h4>
+                    <form className="quick-bill-form" onSubmit={addBill}>
+                      <input
+                        value={billName}
+                        onChange={(e) => setBillName(e.target.value)}
+                        placeholder="Bill name"
+                        required
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={anticipatedBillAmount}
+                        onChange={(e) => setAnticipatedBillAmount(e.target.value)}
+                        placeholder="$ Amount"
+                        required
+                      />
+                      <select
+                        value={billDueDay}
+                        onChange={(e) => setBillDueDay(Number(e.target.value))}
+                      >
+                        {dueDays.map((d) => (
+                          <option key={d} value={d}>
+                            Due {d}
+                            {ordinalSuffix(d)}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                      >
+                        <option value="autopay">Autopay</option>
+                        <option value="manual">Manual</option>
+                      </select>
+                      <input
+                        value={paymentUrl}
+                        onChange={(e) => setPaymentUrl(e.target.value)}
+                        placeholder="Payment URL (optional)"
+                      />
+                      <button type="submit" className="btn-add-quick">
+                        <Plus size={16} /> Add Bill
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* EXPENSES / CATEGORIES DIRECTORY */}
+              {activeTab === 'expenses' && (
+                <div className="table-wrapper">
+                  <div className="categories-directory">
+                    <div className="categories-grid-display">
+                      {categories.map((cat) => (
+                        <div className="category-card-item" key={cat}>
+                          <div className="cat-card-main">
+                            <span className="cat-bullet" />
+                            <strong>{cat}</strong>
+                          </div>
+                          <button
+                            type="button"
+                            className="cat-delete-btn"
+                            onClick={() => removeCategory(cat)}
+                            aria-label={\`Remove category \${cat}\`}
+                            title="Remove category"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="quick-add-category-bar">
+                      <form
+                        className="quick-cat-form"
+                        onSubmit={(e) => {
+                          e.preventDefault()
+                          const name = newExpenseName.trim()
+                          if (name && !categories.some((c) => c.toLowerCase() === name.toLowerCase())) {
+                            const updated = [...categories, name]
+                            setCategories(updated)
+                            setNewExpenseName('')
+                            saveBudgetProfileAsync(
+                              { categories: updated, bills, incomeSources },
+                              currentUser
+                            )
+                          }
+                        }}
+                      >
+                        <input
+                          value={newExpenseName}
+                          onChange={(e) => setNewExpenseName(e.target.value)}
+                          placeholder="New category name, e.g. Home Improvements, Entertainment..."
+                          required
+                        />
+                        <button type="submit" className="btn-add-quick">
+                          <Plus size={16} /> Add Category
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* INCOMES DIRECTORY */}
+              {activeTab === 'income' && (
+                <div className="table-wrapper">
+                  <table className="master-data-table">
+                    <thead>
+                      <tr>
+                        <th>Source Label</th>
+                        <th>Est. Take-Home Amount</th>
+                        <th>Pay Frequency</th>
+                        <th>Last Paid Date</th>
+                        <th>Type</th>
+                        <th style={{ textAlign: 'right' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {incomeSources.map((inc) => (
+                        <tr key={inc.id}>
+                          <td>
+                            <div className="bill-title-cell">
+                              <span className="table-bill-icon icon-income-bg">
+                                <BriefcaseBusiness size={15} />
+                              </span>
+                              <strong>{inc.label}</strong>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="table-amount-badge text-gold">
+                              {formatCurrency(inc.estimatedTakeHome)}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="table-due-badge">
+                              {frequencyLabel(inc.frequency)}
+                            </span>
+                          </td>
+                          <td>{formatDate(inc.lastPayDate)}</td>
+                          <td>
+                            <span className="status-pill pill-manual">
+                              {inc.incomeType === 'hourly' ? 'Hourly' : 'Salary'}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <button
+                              type="button"
+                              className="btn-delete-row"
+                              onClick={() => removeIncome(inc.id)}
+                              aria-label={\`Delete \${inc.label}\`}
+                              title="Delete source"
+                            >
+                              <Trash2 size={15} /> Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  <div className="quick-add-footer">
+                    <button
+                      type="button"
+                      className="btn-edit-financials-link"
+                      onClick={() => {
+                        setActiveStep(0)
+                        setView('setup')
+                      }}
+                    >
+                      <Pencil size={15} /> Edit Incomes in Financials Setup &rarr;
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+          </div>
+        </main>
+      )}
+
+      {/* ======================= ACTION FEATURE MODALS ======================= */}
+      {activeFeatureModal && (
+        <div className="modal-backdrop" onClick={() => setActiveFeatureModal(null)}>
+          <div
+            className="feature-action-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <button
+              className="modal-close-btn"
+              type="button"
+              onClick={() => setActiveFeatureModal(null)}
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Pay Bills Modal */}
+            {activeFeatureModal === 'pay-bills' && (
+              <div className="feature-modal-content">
+                <div className="feature-modal-header">
+                  <div className="action-icon-box icon-bills">
+                    <CreditCard size={24} />
+                  </div>
+                  <div>
+                    <h2>Pay Bills Checklist</h2>
+                    <p>Launch payment links and mark off obligations for this pay cycle.</p>
+                  </div>
+                </div>
+
+                <div className="modal-bills-list">
+                  {bills.length === 0 ? (
+                    <p className="modal-empty-state">No bills recorded. Add bills to start paying.</p>
+                  ) : (
+                    bills.map((b) => (
+                      <div className="modal-bill-item" key={b.id}>
+                        <div className="modal-bill-info">
+                          <strong>{b.name}</strong>
+                          <span className="modal-bill-meta">
+                            {formatCurrency(b.anticipatedAmount)} &bull; Due {b.dueDay}
+                            {ordinalSuffix(b.dueDay)} &bull;{' '}
+                            {b.paymentMethod === 'autopay' ? 'Autopay Enabled' : 'Manual Payment'}
+                          </span>
+                        </div>
+                        <div className="modal-bill-actions">
+                          {b.paymentUrl ? (
+                            <a
+                              href={b.paymentUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="btn-pay-link"
+                            >
+                              Open Portal <ExternalLink size={14} />
+                            </a>
+                          ) : (
+                            <span className="no-link-badge">No link set</span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="modal-footer-actions">
+                  <button
+                    type="button"
+                    className="btn-gold"
+                    onClick={() => setActiveFeatureModal(null)}
+                  >
+                    Done &amp; Return to Dashboard
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Code Previous Expenses Modal */}
+            {activeFeatureModal === 'code-expenses' && (
+              <div className="feature-modal-content">
+                <div className="feature-modal-header">
+                  <div className="action-icon-box icon-expenses">
+                    <Receipt size={24} />
+                  </div>
+                  <div>
+                    <h2>Code Previous Pay Period Expenses</h2>
+                    <p>Assign your transactions to your active Babylon expense categories.</p>
+                  </div>
+                </div>
+
+                <div className="code-expenses-preview">
+                  <div className="category-pill-tray">
+                    <span className="tray-label">Your Active Envelopes:</span>
+                    <div className="pills-wrap">
+                      {categories.map((c) => (
+                        <span className="category-chip" key={c}>
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="reconciliation-tip-box">
+                    <Sparkles size={18} />
+                    <p>
+                      <strong>Babylon Principle:</strong> Reviewing and coding past expenses ensures you know exactly where every coin went before your next paycheck lands.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="modal-footer-actions">
+                  <button
+                    type="button"
+                    className="btn-gold"
+                    onClick={() => setActiveFeatureModal(null)}
+                  >
+                    Complete Expense Coding
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* View Budgets Modal */}
+            {activeFeatureModal === 'view-budgets' && (
+              <div className="feature-modal-content">
+                <div className="feature-modal-header">
+                  <div className="action-icon-box icon-budgets">
+                    <PieChart size={24} />
+                  </div>
+                  <div>
+                    <h2>Babylonian Budget Distribution</h2>
+                    <p>Live snapshot based on your income and recurring obligations.</p>
+                  </div>
+                </div>
+
+                <div className="budget-breakdown-cards">
+                  <div className="breakdown-card card-gold">
+                    <div className="breakdown-head">
+                      <span>10% Gold Vault</span>
+                      <strong>{formatCurrency(goldVaultTarget)}</strong>
+                    </div>
+                    <p>Your foundation savings. Paid first to yourself.</p>
+                  </div>
+
+                  <div className="breakdown-card card-bills">
+                    <div className="breakdown-head">
+                      <span>Committed Monthly Bills</span>
+                      <strong>{formatCurrency(totalMonthlyBills)}</strong>
+                    </div>
+                    <p>Total fixed overhead across your {bills.length} monthly bills.</p>
+                  </div>
+
+                  <div className="breakdown-card card-living">
+                    <div className="breakdown-head">
+                      <span>Discretionary / Living Margin</span>
+                      <strong>{formatCurrency(freeCashFlow)}</strong>
+                    </div>
+                    <p>Remaining balance for variable spending envelopes.</p>
+                  </div>
+                </div>
+
+                <div className="modal-footer-actions">
+                  <button
+                    type="button"
+                    className="btn-gold"
+                    onClick={() => setActiveFeatureModal(null)}
+                  >
+                    Close Budget View
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ======================= AUTH MODAL ======================= */}
+      {authModalOpen && (
+        <div className="modal-backdrop" onClick={() => setAuthModalOpen(false)}>
+          <div
+            className="auth-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="auth-modal-title"
+          >
+            <button
+              className="modal-close-btn"
+              type="button"
+              onClick={() => setAuthModalOpen(false)}
+              aria-label="Close modal"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="auth-header">
+              <span className="auth-seal">
+                <CircleDollarSign size={24} />
+              </span>
+              <h2 id="auth-modal-title">
+                {authMode === 'signup' ? 'Begin Your Babylon Journey' : 'Welcome Back'}
+              </h2>
+              <p>
+                {authMode === 'signup'
+                  ? 'Create an account to save your budget and sync across your devices.'
+                  : 'Log in to manage your budget and inspect your cash flow.'}
+              </p>
+            </div>
+
+            <div className="auth-tabs">
+              <button
+                type="button"
+                className={\`auth-tab \${authMode === 'signup' ? 'active' : ''}\`}
+                onClick={() => {
+                  setAuthMode('signup')
+                  setAuthError(null)
+                }}
+              >
+                Sign Up
+              </button>
+              <button
+                type="button"
+                className={\`auth-tab \${authMode === 'login' ? 'active' : ''}\`}
+                onClick={() => {
+                  setAuthMode('login')
+                  setAuthError(null)
+                }}
+              >
+                Log In
+              </button>
+            </div>
+
+            {authError && (
+              <div className="auth-error-banner" role="alert">
+                {authError}
+              </div>
+            )}
+
+            <form className="auth-form" onSubmit={handleAuthSubmit}>
+              {authMode === 'signup' && (
+                <label className="auth-field">
+                  <span>Your Name</span>
+                  <div className="input-wrap">
+                    <User size={16} />
+                    <input
+                      type="text"
+                      placeholder="e.g. Arkad"
+                      value={authName}
+                      onChange={(e) => setAuthName(e.target.value)}
+                      required
+                    />
+                  </div>
+                </label>
+              )}
+
+              <label className="auth-field">
+                <span>Email Address</span>
+                <div className="input-wrap">
+                  <Mail size={16} />
+                  <input
+                    type="email"
+                    placeholder="name@example.com"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </label>
+
+              <label className="auth-field">
+                <span>Password</span>
+                <div className="input-wrap">
+                  <Lock size={16} />
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </label>
+
+              <button type="submit" className="btn-gold-block">
+                {authMode === 'signup' ? 'Create Account & Start Setup' : 'Log In & View Budget'}
+              </button>
+            </form>
+
+            <div className="auth-divider">
+              <span>OR</span>
+            </div>
+
+            <button
+              type="button"
+              className="btn-guest"
+              onClick={() => {
+                setAuthModalOpen(false)
+                setView('setup')
+              }}
+            >
+              Continue as Guest (No Sign In Required)
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ordinalSuffix(day: number) {
+  if (day > 3 && day < 21) return 'th'
+  switch (day % 10) {
+    case 1:
+      return 'st'
+    case 2:
+      return 'nd'
+    case 3:
+      return 'rd'
+    default:
+      return 'th'
+  }
+}
+
+function frequencyLabel(frequency: PayFrequency) {
+  return frequencies.find((option) => option.value === frequency)?.label ?? frequency
+}
+
+function formatDate(date: string) {
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(
+    new Date(\`\${date}T00:00:00\`)
+  )
+}
+
+function formatCurrency(amount: number | undefined) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount ?? 0)
+}
+`;
+
+fs.writeFileSync(targetPath, content, 'utf-8');
+console.log('App.tsx successfully rewritten!');
+`;
+
+fs.writeFileSync(path.join(__dirname, 'write-app.mjs'), content, 'utf-8');

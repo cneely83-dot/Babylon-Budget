@@ -358,6 +358,401 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "build"
+		},
+		{
+			"label": "Build Standalone Babylon Budget HTML",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"build-standalone.mjs"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Write Stylesheet",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"write-styles.mjs"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Install Neon and Express Backend Packages",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\npm.cmd",
+			"args": [
+				"install",
+				"@neondatabase/serverless",
+				"express",
+				"cors",
+				"dotenv",
+				"bcryptjs",
+				"jsonwebtoken",
+				"--save"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Install Backend Types",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\npm.cmd",
+			"args": [
+				"install",
+				"@types/express",
+				"@types/cors",
+				"@types/bcryptjs",
+				"@types/jsonwebtoken",
+				"--save-dev"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Test Neon Database Connection",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"server/test-db.js"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Initialize Neon Schema",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"server/init-db.js"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Run Babylon Budget API Server",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"server/index.js"
+			],
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Check API Health",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"server/check-health.js"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Verify Live Data on Neon",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"server/verify-live-data.js"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Test API Flow with Neon",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"server/test-api-flow.js"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Verify Live Records",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"server/verify-live-data.js"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Update App Component",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"write-app.mjs"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Run Update App Script",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"update-app.mjs"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Append Dashboard Styles",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"append-styles.mjs"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Fix App.tsx Newlines",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"fix-app.mjs"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Apply Structured Categories to App.tsx",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"update-categories.mjs"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Extract App.tsx",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"extract-app.mjs"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Verify Cloud Database Sync",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"server/verify-live-data.js"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Apply Pay Bills and Matrix Coding Features",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"apply-features.mjs"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Append Matrix and Split Pay Styles",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"append-matrix-styles.mjs"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Verify Live Records in Cloud Database",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"server/verify-live-data.js"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Update Neon DB Schema",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"server/init-db.js"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Extract App.tsx with Ledger",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"extract-fresh-expenses.mjs"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Append Ledger CSS",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"append-ledger-styles.mjs"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Bundle with Fresh Ledger",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"node_modules\\\\vite\\\\bin\\\\vite.js",
+				"build"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Bundle with Fresh Ledger 2",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"node_modules\\\\vite\\\\bin\\\\vite.js",
+				"build"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Bundle with Fresh Ledger 3",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"node_modules\\\\vite\\\\bin\\\\vite.js",
+				"build"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Bundle with Fresh Ledger 4",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"node_modules\\\\vite\\\\bin\\\\vite.js",
+				"build"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Bundle with Fresh Ledger Final",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"node_modules\\\\vite\\\\bin\\\\vite.js",
+				"build"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Build Vite App",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"node_modules\\\\vite\\\\bin\\\\vite.js",
+				"build"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Vite Build Test",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"node_modules\\\\vite\\\\bin\\\\vite.js",
+				"build"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Run Vite Build Now",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"node_modules\\\\vite\\\\bin\\\\vite.js",
+				"build"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Run Fix Select",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"fix-select.mjs"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Build Vite Dist",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"node_modules\\\\vite\\\\bin\\\\vite.js",
+				"build"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Run Line Fix",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"line-fix.mjs"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Vite Production Build",
+			"type": "shell",
+			"command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+			"args": [
+				"node_modules\\\\vite\\\\bin\\\\vite.js",
+				"build"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Build Babylon Budget standalone",
+			"type": "shell",
+			"command": "C:\\Program Files\\nodejs\\npm.cmd",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
 		}
 	]
 }

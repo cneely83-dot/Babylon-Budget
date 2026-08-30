@@ -2,7 +2,23 @@
 
 A personal budgeting app beginning with a setup flow for expense categories and payroll frequency.
 
-## Run locally
+## Open directly as a web page
+
+You can open **[Babylon Budget.html](Babylon%20Budget.html)** directly in any web browser (Chrome, Edge, Firefox, Safari) without running a local server or Node.js.
+
+- Double-click `Babylon Budget.html` (or `Open Babylon Budget.bat`).
+
+## Build standalone web page
+
+To re-bundle after making changes:
+
+```powershell
+npm run build
+```
+
+This compiles TypeScript, bundles the assets, and outputs the updated `Babylon Budget.html`.
+
+## Run locally (development server)
 
 ```powershell
 npm install
