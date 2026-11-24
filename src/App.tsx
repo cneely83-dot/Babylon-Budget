@@ -1234,7 +1234,7 @@ export default function App() {
                 </div>
                 <div className="action-card action-card-expenses" onClick={() => setActiveFeatureModal('code-expenses')} role="button" tabIndex={0}>
                   <div className="action-card-top"><div className="action-icon-box icon-expenses"><Receipt size={24} /></div></div>
-                  <h3>3. Code Previous Pay Period Expenses</h3>
+                  <h3>3. Code Expenses</h3>
                   <p>Log transactions with merchant and amount, and code each to your expense categories with live envelope tracking.</p>
                   <div className="action-card-footer"><span>Open Expense Coding Ledger ({transactions.length} items) &rarr;</span></div>
                 </div>
